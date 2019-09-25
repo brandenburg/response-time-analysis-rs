@@ -90,7 +90,6 @@ mod tests {
         assert_eq!(a.number_arrivals(105), 11);
     }
 
-
     #[test]
     fn compare_periodic_arrivals() {
         let p = arrivals::Periodic{ period: 10 };
@@ -105,6 +104,17 @@ mod tests {
             assert_eq!(a.number_arrivals(delta),  b.number_arrivals(delta));
             assert_eq!(p.number_arrivals(delta),  t.number_arrivals(delta));
         }
+    }
+
+    #[test]
+    fn periodic_iter() {
+        let p = arrivals::Periodic{ period: 10 };
+        let steps: Vec<_> = p.steps_iter().take(5).collect();
+        assert_eq!(steps, [1, 11, 21, 31, 41]);
+
+        let p2 = arrivals::CurvePrefix::from(arrivals::Sporadic::from(p));
+        let steps2: Vec<_> = p2.steps_iter().take(5).collect();
+        assert_eq!(steps2, [1, 11, 21, 31, 41]);        
     }
 
     #[test]
@@ -166,6 +176,25 @@ mod tests {
     }
 
     #[test]
+    fn sporadic_iter() {
+        let s1 = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3 };
+        let steps1: Vec<_> = s1.steps_iter().take(6).collect();
+        assert_eq!(steps1, [1, 8, 18, 28, 38, 48]);
+
+        let s2 = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 16 };
+        let steps2: Vec<_> = s2.steps_iter().take(6).collect();
+        assert_eq!(steps2, [1, 5, 15, 25, 35, 45]);
+
+        let s3 = arrivals::CurvePrefix::from(s1);
+        let steps3: Vec<_> = s3.steps_iter().take(6).collect();
+        assert_eq!(steps3, [1, 8, 18, 28, 38, 48]);
+
+        let s4 = arrivals::CurvePrefix::from(s2);
+        let steps4: Vec<_> = s4.steps_iter().take(6).collect();
+        assert_eq!(steps4, [1, 5, 15, 25, 35, 45]);
+    }
+
+    #[test]
     fn poisson() {
         let p = arrivals::Poisson{ rate: 0.01 };
         assert_approx_eq!(p.arrival_probability(100, 0), 0.368, 0.001);
@@ -176,11 +205,15 @@ mod tests {
         assert_approx_eq!(p.arrival_probability(100, 5), 0.003, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 6), 0.0005, 0.001);
 
-        let a = p.approximate(0.0001);
-        let t = a.maximal_trace(2000);
-        for y in t {
-            println!("flood at {} [at most {} floods]", y, a.number_arrivals(y + 1));
-        }
+        // let a = p.approximate(0.0001);
+
+        // for y in a.steps_iter().take(100) {
+        //     println!("step at interval length {} [#events <= {}]", y, a.number_arrivals(y));
+        // }
+        // let t = a.maximal_trace(2000);
+        // for y in t {
+        //     println!("event at time {} [at most {} events]", y, a.number_arrivals(y + 1));
+        // }
     }
 
 

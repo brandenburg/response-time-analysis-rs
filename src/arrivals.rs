@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
+use std::iter;
 
-use crate::time::{Instant, Duration};
+use crate::time::{Duration, Instant};
 
 pub trait ArrivalBound {
     fn number_arrivals(&self, delta: Duration) -> u64;
@@ -17,6 +18,14 @@ pub trait ArrivalBound {
 
         arrival_trace
     }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            (1..).filter(move |delta| {
+                self.number_arrivals(*delta) > self.number_arrivals(*delta - 1)
+            }),
+        )
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -32,6 +41,10 @@ impl ArrivalBound for Periodic {
     fn number_arrivals(&self, delta: Duration) -> u64 {
         divide_with_ceil(delta, self.period)
     }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new((0..).map(move |j| j * self.period + 1))
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -41,13 +54,22 @@ pub struct Sporadic {
 }
 
 impl ArrivalBound for Sporadic {
-
     fn number_arrivals(&self, delta: Duration) -> u64 {
         if delta > 0 {
             divide_with_ceil(delta + self.jitter, self.min_inter_arrival)
         } else {
             0
         }
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            iter::once(1).chain(
+                (1..)
+                    .filter(move |j| j * self.min_inter_arrival + 1 > self.jitter)
+                    .map(move |j| j * self.min_inter_arrival + 1 - self.jitter),
+            ),
+        )
     }
 }
 
@@ -151,11 +173,6 @@ impl ArrivalBound for CurvePrefix {
             let prefix = delta / self.largest_known_distance();
             let prefix_jobs = prefix * self.jobs_in_largest_known_distance();
             let tail = delta % self.largest_known_distance();
-            dbg!(delta);
-            dbg!(prefix);
-            dbg!(prefix_jobs);
-            dbg!(tail);
-            dbg!(self.min_job_separation());
             if tail > self.min_job_separation() {
                 prefix_jobs + dbg!(self.lookup_arrivals(tail))
             } else {
@@ -164,6 +181,34 @@ impl ArrivalBound for CurvePrefix {
         } else {
             0
         }
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        let diffs: Vec<_> = iter::once(0)
+            .chain(self.min_distance.iter().copied())
+            .zip(self.min_distance.iter().copied())
+            .map(|(a, b)| b - a)
+            .filter(|d| *d > 0)
+            .collect();
+
+        struct StepsIter {
+            sum: Instant,
+            step_sizes: Vec<Duration>,
+            idx: usize
+        }
+
+        impl Iterator for StepsIter {
+            type Item = Duration;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let val = self.sum;
+                self.sum += self.step_sizes[self.idx];
+                self.idx = (self.idx + 1) % self.step_sizes.len();
+                Some(val)
+            }
+        }
+
+        Box::new(StepsIter{sum: 1, step_sizes: diffs, idx: 0})
     }
 }
 
@@ -190,7 +235,7 @@ impl From<Sporadic> for CurvePrefix {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Poisson {
-    pub rate: f64
+    pub rate: f64,
 }
 
 impl Poisson {
@@ -201,20 +246,22 @@ impl Poisson {
             denominator *= x as f64;
         }
         let mean = delta as f64 * self.rate;
-        let mut numerator = (-mean).exp();    // e^(- rate * delta)
+        let mut numerator = (-mean).exp(); // e^(- rate * delta)
         numerator *= mean.powi(njobs as i32); // (rate * delta)**k
         numerator / denominator
     }
 
     pub fn approximate(&self, epsilon: f64) -> ApproximatedPoisson {
-        ApproximatedPoisson{ poisson: self.clone(), epsilon }
+        ApproximatedPoisson {
+            poisson: self.clone(),
+            epsilon,
+        }
     }
 }
 
-
 pub struct ApproximatedPoisson {
     poisson: Poisson,
-    epsilon: f64
+    epsilon: f64,
 }
 
 impl ArrivalBound for ApproximatedPoisson {
@@ -225,7 +272,7 @@ impl ArrivalBound for ApproximatedPoisson {
             loop {
                 cumulative_prob += self.poisson.arrival_probability(delta, njobs);
                 if cumulative_prob + self.epsilon >= 1.0 {
-                    break
+                    break;
                 }
                 njobs += 1;
             }
