@@ -1,4 +1,5 @@
 pub mod arrivals;
+pub mod time;
 
 #[cfg(test)]
 mod tests {

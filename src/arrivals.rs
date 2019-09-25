@@ -1,11 +1,11 @@
 use std::collections::VecDeque;
 
-type Time = u64;
+use crate::time::{Instant, Duration};
 
 pub trait ArrivalBound {
-    fn number_arrivals(&self, delta: Time) -> u64;
+    fn number_arrivals(&self, delta: Duration) -> u64;
 
-    fn maximal_trace(&self, horizon: Time) -> Vec<Time> {
+    fn maximal_trace(&self, horizon: Instant) -> Vec<Instant> {
         let mut arrival_trace = Vec::new();
 
         for delta in 1..=horizon {
@@ -21,7 +21,7 @@ pub trait ArrivalBound {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Periodic {
-    pub period: Time,
+    pub period: Duration,
 }
 
 fn divide_with_ceil(a: u64, b: u64) -> u64 {
@@ -29,20 +29,20 @@ fn divide_with_ceil(a: u64, b: u64) -> u64 {
 }
 
 impl ArrivalBound for Periodic {
-    fn number_arrivals(&self, delta: Time) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> u64 {
         divide_with_ceil(delta, self.period)
     }
 }
 
 #[derive(Copy, Clone, Debug)]
 pub struct Sporadic {
-    pub min_inter_arrival: Time,
-    pub jitter: Time,
+    pub min_inter_arrival: Duration,
+    pub jitter: Duration,
 }
 
 impl ArrivalBound for Sporadic {
 
-    fn number_arrivals(&self, delta: Time) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> u64 {
         if delta > 0 {
             divide_with_ceil(delta + self.jitter, self.min_inter_arrival)
         } else {
@@ -62,11 +62,11 @@ impl From<Periodic> for Sporadic {
 
 #[derive(Clone, Debug)]
 pub struct CurvePrefix {
-    min_distance: Vec<Time>,
+    min_distance: Vec<Duration>,
 }
 
 impl CurvePrefix {
-    pub fn unroll_sporadic(s: &Sporadic, interval: Time) -> CurvePrefix {
+    pub fn unroll_sporadic(s: &Sporadic, interval: Duration) -> CurvePrefix {
         let n = s.number_arrivals(interval) as usize + 1;
         let mut v = Vec::with_capacity(n);
         for i in 0..n {
@@ -81,7 +81,7 @@ impl CurvePrefix {
     }
 
     pub fn from_trace<'a>(
-        arrival_times: impl Iterator<Item = &'a Time>,
+        arrival_times: impl Iterator<Item = &'a Instant>,
         prefix_jobs: usize,
     ) -> CurvePrefix {
         let mut d = Vec::with_capacity(prefix_jobs);
@@ -120,34 +120,20 @@ impl CurvePrefix {
         CurvePrefix { min_distance: d }
     }
 
-    pub fn min_job_separation(&self) -> Time {
+    fn min_job_separation(&self) -> Duration {
         // minimum separation of two jobs given by first element
         self.min_distance[0]
     }
 
-    pub fn largest_known_distance(&self) -> Time {
+    fn largest_known_distance(&self) -> Duration {
         *self.min_distance.last().unwrap()
     }
 
-    pub fn jobs_in_largest_known_distance(&self) -> u64 {
+    fn jobs_in_largest_known_distance(&self) -> u64 {
         self.min_distance.len() as u64
     }
 
-    pub fn min_dinstance_of_jobs(&self, n: u64) -> Time {
-        match n {
-            0 => 0,
-            1 => 1,
-            _ => {
-                if n < self.min_distance.len() as u64 + 2 {
-                    self.min_distance[n as usize - 2]
-                } else {
-                    self.largest_known_distance() + 1
-                }
-            }
-        }
-    }
-
-    pub fn lookup_arrivals(&self, delta: Time) -> u64 {
+    fn lookup_arrivals(&self, delta: Duration) -> u64 {
         // for really large vectors, this should be a binary search...
         for (i, distance) in self.min_distance.iter().enumerate() {
             if *distance + 1 > delta {
@@ -159,7 +145,7 @@ impl CurvePrefix {
 }
 
 impl ArrivalBound for CurvePrefix {
-    fn number_arrivals(&self, delta: Time) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> u64 {
         if delta > 0 {
             // first, resolve long delta by super-additivity of arrival curves
             let prefix = delta / self.largest_known_distance();
@@ -208,7 +194,7 @@ pub struct Poisson {
 }
 
 impl Poisson {
-    pub fn arrival_probability(&self, delta: Time, njobs: u32) -> f64 {
+    pub fn arrival_probability(&self, delta: Duration, njobs: u32) -> f64 {
         // quick and dirty factorial: k!
         let mut denominator = 1.0;
         for x in 1..(njobs + 1) {
@@ -232,7 +218,7 @@ pub struct ApproximatedPoisson {
 }
 
 impl ArrivalBound for ApproximatedPoisson {
-    fn number_arrivals(&self, delta: Time) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> u64 {
         if delta > 0 {
             let mut cumulative_prob = 0.0;
             let mut njobs = 0;
