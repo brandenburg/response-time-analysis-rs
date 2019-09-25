@@ -201,5 +201,22 @@ mod tests {
         assert_eq!(r.provided_service(13), 6);
         assert_eq!(r.provided_service(14), 6);
         assert_eq!(r.provided_service(15), 7);
+
+        assert_eq!(r.service_time(0),  0);
+        assert_eq!(r.service_time(1),  5);
+        assert_eq!(r.service_time(2),  6);
+        assert_eq!(r.service_time(3),  7);
+        assert_eq!(r.service_time(4), 10);
+        assert_eq!(r.service_time(5), 11);
+        assert_eq!(r.service_time(6), 12);
+        assert_eq!(r.service_time(7), 15);
+        assert_eq!(r.service_time(8), 16);
+        assert_eq!(r.service_time(9), 17);
+        assert_eq!(r.service_time(10), 20);
+        assert_eq!(r.service_time(11), 21);
+        assert_eq!(r.service_time(12), 22);
+        assert_eq!(r.service_time(13), 25);
+        assert_eq!(r.service_time(14), 26);
+        assert_eq!(r.service_time(15), 27);
     }
 }
