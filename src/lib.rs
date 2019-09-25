@@ -1,9 +1,11 @@
 pub mod arrivals;
 pub mod time;
+pub mod supply;
 
 #[cfg(test)]
 mod tests {
     use crate::arrivals::{self, ArrivalBound};
+    use crate::supply::{self, SupplyBound};
     use assert_approx_eq::assert_approx_eq;
 
     #[test]
@@ -177,5 +179,27 @@ mod tests {
             println!("flood at {} [at most {} floods]", y, a.number_arrivals(y + 1));
         }
     }
-    
+
+
+    #[test]
+    fn periodic_supply() {
+        let r = supply::Periodic{period: 5, budget: 3};
+
+        assert_eq!(r.provided_service(0), 0);
+        assert_eq!(r.provided_service(1), 0);
+        assert_eq!(r.provided_service(2), 0);
+        assert_eq!(r.provided_service(3), 0);
+        assert_eq!(r.provided_service(4), 0);
+        assert_eq!(r.provided_service(5), 1);
+        assert_eq!(r.provided_service(6), 2);
+        assert_eq!(r.provided_service(7), 3);
+        assert_eq!(r.provided_service(8), 3);
+        assert_eq!(r.provided_service(9), 3);
+        assert_eq!(r.provided_service(10), 4);
+        assert_eq!(r.provided_service(11), 5);
+        assert_eq!(r.provided_service(12), 6);
+        assert_eq!(r.provided_service(13), 6);
+        assert_eq!(r.provided_service(14), 6);
+        assert_eq!(r.provided_service(15), 7);
+    }
 }
