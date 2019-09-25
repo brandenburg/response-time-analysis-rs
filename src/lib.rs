@@ -1,6 +1,7 @@
 pub mod arrivals;
 pub mod time;
 pub mod supply;
+pub mod analysis;
 
 #[cfg(test)]
 mod tests {
