@@ -61,12 +61,12 @@ impl From<Periodic> for Sporadic {
 }
 
 #[derive(Clone, Debug)]
-pub struct FiniteCurvePrefix {
+pub struct CurvePrefix {
     min_distance: Vec<Time>,
 }
 
-impl FiniteCurvePrefix {
-    pub fn unroll_sporadic(s: &Sporadic, interval: Time) -> FiniteCurvePrefix {
+impl CurvePrefix {
+    pub fn unroll_sporadic(s: &Sporadic, interval: Time) -> CurvePrefix {
         let n = s.number_arrivals(interval) as usize + 1;
         let mut v = Vec::with_capacity(n);
         for i in 0..n {
@@ -77,13 +77,13 @@ impl FiniteCurvePrefix {
                 v.push(periods * s.min_inter_arrival - s.jitter)
             }
         }
-        FiniteCurvePrefix { min_distance: v }
+        CurvePrefix { min_distance: v }
     }
 
     pub fn from_trace<'a>(
         arrival_times: impl Iterator<Item = &'a Time>,
         prefix_jobs: usize,
-    ) -> FiniteCurvePrefix {
+    ) -> CurvePrefix {
         let mut d = Vec::with_capacity(prefix_jobs);
         let mut window: VecDeque<u64> = VecDeque::with_capacity(prefix_jobs + 1);
 
@@ -117,7 +117,7 @@ impl FiniteCurvePrefix {
             println!("d[{}] = {}", i, x)
         }
 
-        FiniteCurvePrefix { min_distance: d }
+        CurvePrefix { min_distance: d }
     }
 
     pub fn min_job_separation(&self) -> Time {
@@ -158,7 +158,7 @@ impl FiniteCurvePrefix {
     }
 }
 
-impl ArrivalBound for FiniteCurvePrefix {
+impl ArrivalBound for CurvePrefix {
     fn number_arrivals(&self, delta: Time) -> u64 {
         if delta > 0 {
             // first, resolve long delta by super-additivity of arrival curves
@@ -181,15 +181,15 @@ impl ArrivalBound for FiniteCurvePrefix {
     }
 }
 
-impl From<Periodic> for FiniteCurvePrefix {
+impl From<Periodic> for CurvePrefix {
     fn from(p: Periodic) -> Self {
-        FiniteCurvePrefix {
+        CurvePrefix {
             min_distance: vec![p.period],
         }
     }
 }
 
-impl From<Sporadic> for FiniteCurvePrefix {
+impl From<Sporadic> for CurvePrefix {
     fn from(s: Sporadic) -> Self {
         let jitter_jobs = divide_with_ceil(s.jitter, s.min_inter_arrival);
         // Jitter can cause pessimism when applying super-additivity.
@@ -198,7 +198,7 @@ impl From<Sporadic> for FiniteCurvePrefix {
         // By default, unroll until the jitter jobs are no more than 10% of the
         // jobs of the jobs in the unrolled interval, and until for at least 500 jobs.
         let n = 500.max(jitter_jobs * 10);
-        FiniteCurvePrefix::unroll_sporadic(&s, n * s.min_inter_arrival)
+        CurvePrefix::unroll_sporadic(&s, n * s.min_inter_arrival)
     }
 }
 

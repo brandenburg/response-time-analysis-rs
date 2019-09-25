@@ -1,7 +1,5 @@
 pub mod arrivals;
 
-
-
 #[cfg(test)]
 mod tests {
     use crate::arrivals::{self, ArrivalBound};
@@ -25,7 +23,7 @@ mod tests {
     fn periodic_arrivals_via_unroll_sporadic() {
         let p = arrivals::Periodic{ period: 10 };
         let s = arrivals::Sporadic::from(p);
-        let a = arrivals::FiniteCurvePrefix::unroll_sporadic(&s, 1000);
+        let a = arrivals::CurvePrefix::unroll_sporadic(&s, 1000);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  1);        
@@ -42,7 +40,7 @@ mod tests {
     fn periodic_arrivals_via_sporadic() {
         let p = arrivals::Periodic{ period: 10 };
         let s = arrivals::Sporadic::from(p);
-        let a = arrivals::FiniteCurvePrefix::from(s);
+        let a = arrivals::CurvePrefix::from(s);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  1);        
@@ -57,7 +55,7 @@ mod tests {
     #[test]
     fn periodic_arrivals_unrolled() {
         let p = arrivals::Periodic{ period: 10 };
-        let a = arrivals::FiniteCurvePrefix::from(p);
+        let a = arrivals::CurvePrefix::from(p);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  1);        
@@ -73,7 +71,7 @@ mod tests {
     #[test]
     fn periodic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
-        let a = arrivals::FiniteCurvePrefix::from_trace(trace.iter(), 10);
+        let a = arrivals::CurvePrefix::from_trace(trace.iter(), 10);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  1);        
@@ -91,10 +89,10 @@ mod tests {
     fn compare_periodic_arrivals() {
         let p = arrivals::Periodic{ period: 10 };
         let s = arrivals::Sporadic::from(p);
-        let a = arrivals::FiniteCurvePrefix::from(p);
-        let b = arrivals::FiniteCurvePrefix::from(s);
+        let a = arrivals::CurvePrefix::from(p);
+        let b = arrivals::CurvePrefix::from(s);
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
-        let t = arrivals::FiniteCurvePrefix::from_trace(trace.iter(), 2);
+        let t = arrivals::CurvePrefix::from_trace(trace.iter(), 2);
         for delta in 0..1000 {
             assert_eq!(a.number_arrivals(delta),  p.number_arrivals(delta));
             assert_eq!(s.number_arrivals(delta),  p.number_arrivals(delta));
@@ -120,7 +118,7 @@ mod tests {
     #[test]
     fn sporadic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 7, 17, 27, 37, 47, 57, 67, 77, 87, 110, 117];
-        let a = arrivals::FiniteCurvePrefix::from_trace(trace.iter(), 5);
+        let a = arrivals::CurvePrefix::from_trace(trace.iter(), 5);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  2);
@@ -131,7 +129,7 @@ mod tests {
     #[test]
     fn sporadic_arrivals_unrolled() {
         let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3 };
-        let a = arrivals::FiniteCurvePrefix::from(s);
+        let a = arrivals::CurvePrefix::from(s);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
         assert_eq!(a.number_arrivals(8),  2);
@@ -155,7 +153,7 @@ mod tests {
     #[test]
     fn compare_sporadic_arrivals() {
         let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 16 };
-        let a = arrivals::FiniteCurvePrefix::from(s);
+        let a = arrivals::CurvePrefix::from(s);
         for delta in 0..1000 {
             assert_eq!(a.number_arrivals(delta),  s.number_arrivals(delta));
         }
