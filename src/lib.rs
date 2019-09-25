@@ -3,6 +3,8 @@ pub mod time;
 pub mod supply;
 pub mod analysis;
 
+pub mod ros2;
+
 #[cfg(test)]
 mod tests {
     use crate::arrivals::{self, ArrivalBound};

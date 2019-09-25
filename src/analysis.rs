@@ -17,23 +17,19 @@ impl<B: ArrivalBound> RequestBound for FullWCET<B> {
     }
 }
 
-pub trait TotalBound {
-    fn total_demand(&self, offset: Instant, delta: Duration) -> Duration;
-}
-
 pub fn fixed_point_search<SBF, RHS>(
     supply: SBF,
     offset: Instant,
-    workload: RHS,
     divergence_limit: Duration,
+    workload: RHS
 ) -> Option<Duration>
 where
     SBF: SupplyBound,
-    RHS: TotalBound,
+    RHS: Fn(Duration) -> Duration,
 {
     let mut assumed_response_time = 1;
     while assumed_response_time <= divergence_limit {
-        let demand = workload.total_demand(offset, assumed_response_time);
+        let demand = workload(assumed_response_time);
         let response_time_bound = supply.service_time(demand) - offset;
         if response_time_bound <= assumed_response_time {
             // we have converged
