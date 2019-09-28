@@ -254,5 +254,11 @@ mod tests {
         assert_eq!(r.service_time(13), 25);
         assert_eq!(r.service_time(14), 26);
         assert_eq!(r.service_time(15), 27);
+
+        for cost in 1..1000 {
+            let service_time = r.service_time(cost);
+            let blackout_interference = service_time - r.provided_service(service_time);
+            assert_eq!(blackout_interference + cost, service_time);
+        }
     }
 }
