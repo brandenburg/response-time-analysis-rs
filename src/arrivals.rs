@@ -19,6 +19,8 @@ pub trait ArrivalBound {
         arrival_trace
     }
 
+    // The sequence of interval lengths for which the arrival bound "steps", i.e.,
+    // where it shows an increase.
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(
             (1..).filter(move |delta| {

@@ -1,9 +1,12 @@
 use crate::arrivals::ArrivalBound;
 use crate::supply::SupplyBound;
 use crate::time::{Duration, Instant};
+use std::cmp::Ordering;
 
 pub trait RequestBound {
     fn service_needed(&self, delta: Duration) -> Duration;
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
 pub struct FullWCET<B: ArrivalBound> {
@@ -15,13 +18,17 @@ impl<B: ArrivalBound> RequestBound for FullWCET<B> {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.arrival_bound.number_arrivals(delta) * self.per_job_wcet
     }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        self.arrival_bound.steps_iter()
+    }
 }
 
-pub fn fixed_point_search<SBF, RHS>(
-    supply: SBF,
+pub fn fixed_point_search_with_offset<SBF, RHS>(
+    supply: &SBF,
     offset: Instant,
     divergence_limit: Duration,
-    workload: RHS
+    workload: RHS,
 ) -> Option<Duration>
 where
     SBF: SupplyBound,
@@ -33,7 +40,7 @@ where
         let response_time_bound = supply.service_time(demand) - offset;
         if response_time_bound <= assumed_response_time {
             // we have converged
-            return Some(response_time_bound)
+            return Some(response_time_bound);
         } else {
             // continue iterating
             assumed_response_time = response_time_bound
@@ -41,4 +48,65 @@ where
     }
     // if we get here, we failed to converge => no solution
     None
+}
+
+pub fn fixed_point_search<SBF, RHS>(
+    supply: &SBF,
+    divergence_limit: Duration,
+    workload_bound: RHS,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RHS: Fn(Duration) -> Duration,
+{
+    fixed_point_search_with_offset(supply, 0, divergence_limit, workload_bound)
+}
+
+pub fn max_response_time(
+    rta_per_offset: impl Iterator<Item = Option<Duration>>,
+) -> Option<Duration> {
+    rta_per_offset
+        .max_by(|a, b| {
+            // propagate any None values
+            if a.is_none() {
+                Ordering::Less
+            } else if b.is_none() {
+                Ordering::Greater
+            } else {
+                a.unwrap().cmp(&b.unwrap())
+            }
+        })
+        .unwrap_or(None)
+}
+
+pub fn response_time_analysis<SBF, RBF, F, G>(
+    supply: &SBF,
+    demand: &RBF,
+    bw_demand_bound: F,
+    offset_demand_bound: G,
+    limit: Duration,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RBF: RequestBound,
+    F: Fn(Duration) -> Duration,
+    G: Fn(Instant, Duration) -> Duration,
+{
+    // find a bound on the maximum busy-window
+    if let Some(max_bw) = fixed_point_search(supply, limit, bw_demand_bound) {
+        // Look at all points where the demand curve "steps".
+        // Note that steps_iter() yields interval lengths, but we are interested in 
+        // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
+        // to obtain the offset. 
+        let offsets = demand.steps_iter().map(|x| x - 1).take_while(|x| *x <= max_bw);
+        // for each relevant offset in the search space, 
+        let rta_bounds = offsets.map(|offset| {
+            let rhs = |delta| offset_demand_bound(offset, delta);
+            fixed_point_search_with_offset(supply, offset, limit, rhs)
+        });
+        max_response_time(rta_bounds)
+    } else {
+        // in case of an unbounded busy-window, we cannot report a reponse-time bound
+        None
+    }
 }
