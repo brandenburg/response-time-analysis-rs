@@ -1,7 +1,10 @@
 use crate::arrivals::ArrivalBound;
 use crate::supply::SupplyBound;
 use crate::time::{Duration, Instant};
+
 use std::cmp::Ordering;
+
+use itertools::Itertools;
 
 pub trait RequestBound {
     fn service_needed(&self, delta: Duration) -> Duration;
@@ -10,17 +13,41 @@ pub trait RequestBound {
 }
 
 pub struct FullWCET<B: ArrivalBound> {
-    pub per_job_wcet: Duration,
+    pub wcet: Duration,
     pub arrival_bound: B,
 }
 
 impl<B: ArrivalBound> RequestBound for FullWCET<B> {
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.arrival_bound.number_arrivals(delta) * self.per_job_wcet
+        self.arrival_bound.number_arrivals(delta) * self.wcet
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         self.arrival_bound.steps_iter()
+    }
+}
+
+pub struct JointRBF {
+    components: Vec<Box<dyn RequestBound>>
+}
+
+impl JointRBF {
+    pub fn new() -> JointRBF {
+        JointRBF{ components: Vec::new() }
+    }
+
+    pub fn add(&mut self, rbf: Box<dyn RequestBound>) {
+        self.components.push(rbf)
+    }
+}
+
+impl RequestBound for JointRBF {
+    fn service_needed(&self, delta: Duration) -> Duration {
+        self.components.iter().map(|rbf| rbf.service_needed(delta)).sum()
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(self.components.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
 }
 
