@@ -294,12 +294,12 @@ mod tests {
             analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
         ];
 
-        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 0, 100);
+        let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 12);
 
 
-        let result2 = ros2::rta_timer(&sbf, &rbf, &interference, 1, 4, 100);
+        let result2 = ros2::rta_timer(&sbf, &rbf, &interference, 4, 100);
         assert!(result2.is_some());
         assert_eq!(result2.unwrap(), 20);
     }
@@ -318,7 +318,7 @@ mod tests {
             Box::new(analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
         ];
 
-        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 0, 100);
+        let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 17);
     }
@@ -337,7 +337,7 @@ mod tests {
             analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
         ];
 
-        let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 1, 100);
+        let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 12);
     }

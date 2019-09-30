@@ -18,7 +18,6 @@ pub fn rta_timer<SBF, RBF1, RBF2>(
     supply: &SBF,
     own_demand: &RBF1,
     interfering_demand: &RBF2,
-    own_wcet: Duration,
     blocking_bound: Duration,
     limit: Duration,
 ) -> Option<Duration>
@@ -27,6 +26,8 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
 {
+    // cost of timer callback
+    let own_wcet = own_demand.max_single_job_cost();
     // right-hand side of Lemma 6
     let rhs_bw = |delta| {
         own_demand.service_needed(delta) + blocking_bound + interfering_demand.service_needed(delta)
@@ -44,7 +45,6 @@ pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
     supply: &SBF,
     own_demand: &RBF1,
     interfering_demand: &RBF2,
-    own_wcet: Duration,
     limit: Duration,
 ) -> Option<Duration>
 where
@@ -52,6 +52,8 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
 {
+    // cost of pp-based callback under analysis
+    let own_wcet = own_demand.max_single_job_cost();
     // right-hand side of Lemma 6
     let rhs_bw = |delta| {
         own_demand.service_needed(delta) + interfering_demand.service_needed(delta)

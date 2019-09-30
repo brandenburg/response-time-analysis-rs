@@ -9,6 +9,8 @@ use itertools::Itertools;
 pub trait RequestBound {
     fn service_needed(&self, delta: Duration) -> Duration;
 
+    fn max_single_job_cost(&self) -> Duration;
+
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
@@ -23,6 +25,10 @@ impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
         self.arrival_bound.number_arrivals(delta) * self.wcet
     }
 
+    fn max_single_job_cost(&self) -> Duration {
+        self.wcet
+    }
+
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         self.arrival_bound.steps_iter()
     }
@@ -33,6 +39,10 @@ impl<T: RequestBound> RequestBound for Vec<T> {
         self.iter().map(|rbf| rbf.service_needed(delta)).sum()
     }
 
+    fn max_single_job_cost(&self) -> Duration {
+        self.iter().map(|rbf| rbf.max_single_job_cost()).max().unwrap_or(0)
+    }
+
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
@@ -41,6 +51,10 @@ impl<T: RequestBound> RequestBound for Vec<T> {
 impl RequestBound for Vec<Box<dyn RequestBound>> {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.iter().map(|rbf| rbf.service_needed(delta)).sum()
+    }
+
+    fn max_single_job_cost(&self) -> Duration {
+        self.iter().map(|rbf| rbf.max_single_job_cost()).max().unwrap_or(0)
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
