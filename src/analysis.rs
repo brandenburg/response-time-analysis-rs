@@ -12,12 +12,13 @@ pub trait RequestBound {
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
-pub struct FullWCET<B: ArrivalBound> {
+#[derive(Clone, Debug)]
+pub struct WorstCaseRBF<B: ArrivalBound> {
     pub wcet: Duration,
     pub arrival_bound: B,
 }
 
-impl<B: ArrivalBound> RequestBound for FullWCET<B> {
+impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.arrival_bound.number_arrivals(delta) * self.wcet
     }
@@ -31,13 +32,17 @@ pub struct JointRBF {
     components: Vec<Box<dyn RequestBound>>
 }
 
-impl JointRBF {
+impl<'a> JointRBF {
     pub fn new() -> JointRBF {
         JointRBF{ components: Vec::new() }
     }
 
-    pub fn add(&mut self, rbf: Box<dyn RequestBound>) {
+    pub fn add_boxed(&mut self, rbf: Box<dyn RequestBound>) {
         self.components.push(rbf)
+    }
+
+    pub fn add<RBF: RequestBound + Clone + 'static>(&mut self, rbf: &RBF) {
+        self.add_boxed(Box::new(rbf.clone()))
     }
 }
 
@@ -67,6 +72,11 @@ where
         let response_time_bound = supply.service_time(demand) - offset;
         if response_time_bound <= assumed_response_time {
             // we have converged
+            dbg!(offset);
+            dbg!(assumed_response_time);
+            dbg!(supply.provided_service(response_time_bound + offset));
+            dbg!(workload(response_time_bound));
+            dbg!(response_time_bound);
             return Some(response_time_bound);
         } else {
             // continue iterating

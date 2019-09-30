@@ -9,7 +9,10 @@ pub mod ros2;
 mod tests {
     use crate::arrivals::{self, ArrivalBound};
     use crate::supply::{self, SupplyBound};
+    use crate::analysis;
+    use crate::ros2;
     use assert_approx_eq::assert_approx_eq;
+    
 
     #[test]
     fn periodic_arrivals() {
@@ -261,4 +264,43 @@ mod tests {
             assert_eq!(blackout_interference + cost, service_time);
         }
     }
+
+    #[test]
+    fn ros2_event_source() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let rbf = analysis::WorstCaseRBF{
+            wcet: 2,
+            arrival_bound: arrivals::Sporadic{ jitter: 2, min_inter_arrival: 5 }
+        };
+
+        let result = ros2::rta_event_source(&sbf, &rbf, 100);
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), 7);
+    }
+
+    #[test]
+    fn ros2_timer() {
+        // let sbf = supply::DedicatedProcessor{};
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let rbf = analysis::WorstCaseRBF{
+            wcet: 1,
+            arrival_bound: arrivals::Periodic{period: 10}
+        };
+
+        let mut interference = analysis::JointRBF::new();
+
+        interference.add_boxed(Box::new(analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}));
+
+        interference.add(&analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}});
+
+        let result = ros2::rta_event_source(&sbf, &rbf, 100);
+
+
+        assert!(result.is_some());
+        dbg!(result);
+    }
+    
 }
