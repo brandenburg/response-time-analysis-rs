@@ -11,7 +11,7 @@ where
     let rhs_busy_window = |delta| demand.service_needed(delta);
     // right-hand side of Lemma 1
     let rhs = |offset, _response| demand.service_needed(offset + 1);
-    analysis::response_time_analysis(supply, demand, rhs_busy_window, rhs, limit)
+    analysis::bound_response_time(supply, demand, rhs_busy_window, rhs, limit)
 }
 
 pub fn rta_timer<SBF, RBF1, RBF2>(
@@ -37,7 +37,7 @@ where
         interfering_demand.service_needed(offset + response - own_wcet + 1) +
         blocking_bound
     };
-    analysis::response_time_analysis(supply, own_demand, rhs_bw, rhs, limit)
+    analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
 
 pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
@@ -61,5 +61,5 @@ where
         own_demand.service_needed(offset + 1) +
         interfering_demand.service_needed(offset + response - own_wcet + 1)
     };
-    analysis::response_time_analysis(supply, own_demand, rhs_bw, rhs, limit)
+    analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }

@@ -108,7 +108,7 @@ pub fn max_response_time(
         .unwrap_or(None)
 }
 
-pub fn response_time_analysis<SBF, RBF, F, G>(
+pub fn bound_response_time<SBF, RBF, F, G>(
     supply: &SBF,
     demand: &RBF,
     bw_demand_bound: F,
