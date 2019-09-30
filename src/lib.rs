@@ -219,6 +219,18 @@ mod tests {
         // }
     }
 
+    #[test]
+    fn propagated_jitter() {
+        let p = arrivals::Periodic{ period: 10 };
+        let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3};
+        let prop = arrivals::Propagated{ input_event_model: p, response_time_jitter: 3};
+        for t in 0..1000 {
+            assert_eq!(s.number_arrivals(t), prop.number_arrivals(t));
+        }
+        for (x, y) in s.steps_iter().zip(prop.steps_iter().take(100)) {
+            assert_eq!(x, y);
+        }
+    }
 
     #[test]
     fn periodic_supply() {

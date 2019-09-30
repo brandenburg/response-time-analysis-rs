@@ -284,3 +284,33 @@ impl ArrivalBound for ApproximatedPoisson {
         }
     }
 }
+
+
+pub struct Propagated<T: ArrivalBound> {
+    pub response_time_jitter: Duration,
+    pub input_event_model: T
+}
+
+impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
+    fn number_arrivals(&self, delta: Duration) -> u64 {
+        if delta > 0 {
+            self.input_event_model.number_arrivals(delta + self.response_time_jitter)
+        } else {
+            0
+        }
+        
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            iter::once(1).chain(
+                // shift the steps of the input event model earlier by the jitter amount
+                self.input_event_model
+                    .steps_iter()
+                    .filter(move |x| *x > self.response_time_jitter)
+                    .map(move |x| x - self.response_time_jitter)
+            )
+        )
+    }
+
+}
