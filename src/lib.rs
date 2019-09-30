@@ -322,4 +322,23 @@ mod tests {
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 17);
     }
+
+    #[test]
+    fn ros2_pp_callback() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let rbf = analysis::WorstCaseRBF{
+            wcet: 1,
+            arrival_bound: arrivals::Periodic{period: 10}
+        };
+
+        let interference = vec![
+            analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
+            analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
+        ];
+
+        let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 1, 100);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), 12);
+    }
 }
