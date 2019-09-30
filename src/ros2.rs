@@ -39,3 +39,27 @@ where
     };
     analysis::response_time_analysis(supply, own_demand, rhs_bw, rhs, limit)
 }
+
+pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
+    supply: &SBF,
+    own_demand: &RBF1,
+    interfering_demand: &RBF2,
+    own_wcet: Duration,
+    limit: Duration,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RBF1: RequestBound,
+    RBF2: RequestBound,
+{
+    // right-hand side of Lemma 6
+    let rhs_bw = |delta| {
+        own_demand.service_needed(delta) + interfering_demand.service_needed(delta)
+    };
+    // right-hand side of Lemma 3
+    let rhs = |offset, response| {
+        own_demand.service_needed(offset + 1) +
+        interfering_demand.service_needed(offset + response - own_wcet + 1)
+    };
+    analysis::response_time_analysis(supply, own_demand, rhs_bw, rhs, limit)
+}
