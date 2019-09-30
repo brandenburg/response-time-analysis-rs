@@ -9,7 +9,7 @@ pub mod ros2;
 mod tests {
     use crate::arrivals::{self, ArrivalBound};
     use crate::supply::{self, SupplyBound};
-    use crate::analysis;
+    use crate::analysis::{self, RequestBound};
     use crate::ros2;
     use assert_approx_eq::assert_approx_eq;
     
@@ -282,7 +282,6 @@ mod tests {
 
     #[test]
     fn ros2_timer() {
-        // let sbf = supply::DedicatedProcessor{};
         let sbf = supply::Periodic{period: 5, budget: 3};
 
         let rbf = analysis::WorstCaseRBF{
@@ -292,20 +291,17 @@ mod tests {
 
         let interference = vec![
             analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
-            analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 30}},
+            analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
         ];
 
-        // let mut interference = analysis::JointRBF::new();
-
-        // interference.add_boxed(Box::new(analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}));
-
-        // interference.add(&analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}});
-
-        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 7, 100);
-
-
+        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 0, 100);
         assert!(result.is_some());
-        dbg!(result);
+        assert_eq!(result.unwrap(), 12);
+
+
+        let result2 = ros2::rta_timer(&sbf, &rbf, &interference, 1, 4, 100);
+        assert!(result2.is_some());
+        assert_eq!(result2.unwrap(), 20);
     }
     
 }
