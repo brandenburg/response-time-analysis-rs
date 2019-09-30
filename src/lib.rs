@@ -341,4 +341,34 @@ mod tests {
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 12);
     }
+
+    #[test]
+    fn ros2_chain() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let chain1_wcet = vec![1, 2, 3];
+        let chain2_wcet = vec![1, 1, 1];
+        let chain3_wcet = vec![2, 1];
+
+        let all_chains: Vec<Box<dyn RequestBound>> = vec![
+            Box::new(analysis::WorstCaseRBF{
+                wcet: chain1_wcet.iter().sum(),
+                arrival_bound: arrivals::Periodic{period: 25}
+            }),
+            Box::new(analysis::WorstCaseRBF{
+                wcet: chain2_wcet.iter().sum(),
+                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+            }),
+            Box::new(analysis::WorstCaseRBF{
+                wcet: chain3_wcet.iter().sum(),
+                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+            }),
+        ];
+
+        let last_cb = *chain1_wcet.iter().last().unwrap();
+
+        let result = ros2::rta_processing_chain(&sbf, &all_chains, last_cb, 1000);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), 152);
+    }
 }

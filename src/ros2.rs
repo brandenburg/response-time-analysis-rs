@@ -63,3 +63,24 @@ where
     };
     analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
+
+pub fn rta_processing_chain<SBF, RBF>(
+    supply: &SBF,
+    all_chains: &RBF,
+    last_callback_wcet: Duration,
+    limit: Duration,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RBF: RequestBound,
+{
+    // right-hand side of Lemma 3
+    let rhs = |response| {
+        if response > last_callback_wcet {
+            all_chains.service_needed(response - last_callback_wcet + 1)
+        } else {
+            all_chains.service_needed(1)
+        }
+    };
+    analysis::fixed_point_search(supply, limit, rhs)
+}
