@@ -1,5 +1,5 @@
 [package]
-name = "ros2-sched-analysis"
+name = "rt-sched-analysis"
 version = "0.1.0"
 authors = ["Björn Brandenburg <bbb@mpi-sws.org>"]
 edition = "2018"
