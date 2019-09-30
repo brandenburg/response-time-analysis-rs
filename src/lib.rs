@@ -290,13 +290,18 @@ mod tests {
             arrival_bound: arrivals::Periodic{period: 10}
         };
 
-        let mut interference = analysis::JointRBF::new();
+        let interference = vec![
+            analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
+            analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 30}},
+        ];
 
-        interference.add_boxed(Box::new(analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}));
+        // let mut interference = analysis::JointRBF::new();
 
-        interference.add(&analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}});
+        // interference.add_boxed(Box::new(analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}));
 
-        let result = ros2::rta_event_source(&sbf, &rbf, 100);
+        // interference.add(&analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}});
+
+        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 7, 100);
 
 
         assert!(result.is_some());

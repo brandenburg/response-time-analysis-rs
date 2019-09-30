@@ -28,31 +28,13 @@ impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
     }
 }
 
-pub struct JointRBF {
-    components: Vec<Box<dyn RequestBound>>
-}
-
-impl<'a> JointRBF {
-    pub fn new() -> JointRBF {
-        JointRBF{ components: Vec::new() }
-    }
-
-    pub fn add_boxed(&mut self, rbf: Box<dyn RequestBound>) {
-        self.components.push(rbf)
-    }
-
-    pub fn add<RBF: RequestBound + Clone + 'static>(&mut self, rbf: &RBF) {
-        self.add_boxed(Box::new(rbf.clone()))
-    }
-}
-
-impl RequestBound for JointRBF {
+impl<T: RequestBound> RequestBound for Vec<T> {
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.components.iter().map(|rbf| rbf.service_needed(delta)).sum()
+        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.components.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
+        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
 }
 
