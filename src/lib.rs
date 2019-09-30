@@ -303,5 +303,23 @@ mod tests {
         assert!(result2.is_some());
         assert_eq!(result2.unwrap(), 20);
     }
-    
+
+    #[test]
+    fn ros2_timer_with_sporadic() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let rbf = analysis::WorstCaseRBF{
+            wcet: 1,
+            arrival_bound: arrivals::Periodic{period: 10}
+        };
+
+        let interference: Vec<Box<dyn RequestBound>> = vec![
+            Box::new(analysis::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}),
+            Box::new(analysis::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
+        ];
+
+        let result = ros2::rta_timer(&sbf, &rbf, &interference, 1, 0, 100);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), 17);
+    }
 }

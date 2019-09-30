@@ -38,6 +38,16 @@ impl<T: RequestBound> RequestBound for Vec<T> {
     }
 }
 
+impl RequestBound for Vec<Box<dyn RequestBound>> {
+    fn service_needed(&self, delta: Duration) -> Duration {
+        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
+    }
+}
+
 pub fn fixed_point_search_with_offset<SBF, RHS>(
     supply: &SBF,
     offset: Instant,
