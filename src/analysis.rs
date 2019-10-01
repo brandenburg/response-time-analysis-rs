@@ -28,6 +28,10 @@ pub trait RequestBound {
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
+pub trait AggregateRequestBound: RequestBound {
+    fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration;
+}
+
 #[derive(Clone, Debug)]
 pub struct WorstCaseRBF<B: ArrivalBound> {
     pub wcet: Duration,
@@ -83,6 +87,14 @@ impl<T: RequestBound> RequestBound for Vec<T> {
     }
 }
 
+impl<T: RequestBound> AggregateRequestBound for Vec<T> {
+    fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
+        self.iter()
+            .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
+            .sum()
+    }
+}
+
 impl RequestBound for Vec<Box<dyn RequestBound>> {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.iter().map(|rbf| rbf.service_needed(delta)).sum()
@@ -101,6 +113,14 @@ impl RequestBound for Vec<Box<dyn RequestBound>> {
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
+    }
+}
+
+impl AggregateRequestBound for Vec<Box<dyn RequestBound>> {
+    fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
+        self.iter()
+            .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
+            .sum()
     }
 }
 
