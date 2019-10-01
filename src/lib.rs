@@ -7,6 +7,7 @@ pub mod ros2;
 
 #[cfg(test)]
 mod tests {
+    use crate::time::Duration;
     use crate::arrivals::{self, ArrivalBound};
     use crate::supply::{self, SupplyBound};
     use crate::analysis::{self, RequestBound};
@@ -417,5 +418,38 @@ mod tests {
         assert!(result.is_some());
         dbg!(result);
         assert_eq!(result.unwrap(), 72);
+    }
+
+    #[test]
+    fn ros2_chain3() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let chain1_wcet: Vec<Duration> = vec![1, 2, 3];
+        let chain2_wcet = vec![1, 1, 1];
+        let chain3_wcet = vec![2, 1];
+
+        let chain1_arrivals = arrivals::Periodic{period: 25};
+
+        let other_chains: Vec<Box<dyn RequestBound>> = vec![
+            Box::new(analysis::WorstCaseRBF{
+                wcet: chain2_wcet.iter().sum(),
+                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+            }),
+            Box::new(analysis::WorstCaseRBF{
+                wcet: chain3_wcet.iter().sum(),
+                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+            }),
+        ];
+
+        let result = ros2::rta_processing_chain_window_aware(
+            &sbf,
+            chain1_wcet.iter().copied(),
+            &chain1_arrivals,
+            &other_chains,
+            1000
+        );
+        assert!(result.is_some());
+        dbg!(result);
+        // assert_eq!(result.unwrap(), 72);
     }
 }

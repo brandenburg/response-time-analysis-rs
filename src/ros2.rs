@@ -1,4 +1,5 @@
-use crate::analysis::{self, RequestBound};
+use crate::analysis::{self, AggregateRequestBound, RequestBound};
+use crate::arrivals::ArrivalBound;
 use crate::supply::SupplyBound;
 use crate::time::*;
 
@@ -119,4 +120,67 @@ where
             + interfering_demand.service_needed(interference_interval)
     };
     analysis::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
+}
+
+// NOTE: Just a sketch, no proof of correctness yet. 
+pub fn rta_processing_chain_window_aware<SBF, AB, RBF>(
+    supply: &SBF,
+    chain_costs: impl Iterator<Item = Duration>,
+    chain_arrival_bound: &AB,
+    interfering_demand: &RBF,
+    limit: Duration,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    AB: ArrivalBound + Clone,
+    RBF: AggregateRequestBound,
+{
+    // split costs by prefix and last callback in chain, and count callbacks
+    let (prefix_cost, last_cb, chain_length) = {
+        // let's define these as mutable only while we determine them
+        let mut prefix_cost = 0;
+        let mut last_cb = 0;
+        let mut chain_length = 0;
+
+        for c in chain_costs {
+            prefix_cost += c;
+            last_cb = c;
+            chain_length += 1;
+        }
+        prefix_cost -= last_cb;
+        // initialize with immutable final values
+        (prefix_cost, last_cb, chain_length)
+    };
+
+    let prefix_rbf = analysis::WorstCaseRBF {
+        wcet: prefix_cost,
+        arrival_bound: chain_arrival_bound.clone(),
+    };
+
+    let suffix_rbf = analysis::WorstCaseRBF {
+        wcet: last_cb,
+        arrival_bound: chain_arrival_bound.clone(),
+    };
+
+    // busy-window ends when all chains are quiet
+    let rhs_bw = |delta| {
+        prefix_rbf.service_needed(delta)
+            + suffix_rbf.service_needed(delta)
+            + interfering_demand.service_needed(delta)
+    };
+    // right-hand side of recurrence for chain analysis
+    let rhs = |offset, response| {
+        // compute the maximum number of relevant processing windows
+        let num_windows = chain_arrival_bound.number_arrivals(offset + 1) * chain_length;
+
+        let interference_interval = if response > last_cb {
+            offset + response - last_cb + 1
+        } else {
+            offset + 1
+        };
+        suffix_rbf.service_needed(offset + 1)
+            + prefix_rbf.service_needed_by_n_jobs(interference_interval, num_windows as usize)
+            + interfering_demand.service_needed_by_n_jobs_per_component(interference_interval, 1 + num_windows as usize)
+    };
+    analysis::bound_response_time(supply, &suffix_rbf, rhs_bw, rhs, limit)
 }
