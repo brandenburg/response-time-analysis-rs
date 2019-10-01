@@ -34,9 +34,9 @@ where
     };
     // right-hand side of Lemma 3
     let rhs = |offset, response| {
-        own_demand.service_needed(offset + 1) +
-        interfering_demand.service_needed(offset + response - own_wcet + 1) +
-        blocking_bound
+        own_demand.service_needed(offset + 1)
+            + interfering_demand.service_needed(offset + response - own_wcet + 1)
+            + blocking_bound
     };
     analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
@@ -55,13 +55,12 @@ where
     // cost of pp-based callback under analysis
     let own_wcet = own_demand.max_single_job_cost();
     // right-hand side of Lemma 6
-    let rhs_bw = |delta| {
-        own_demand.service_needed(delta) + interfering_demand.service_needed(delta)
-    };
+    let rhs_bw =
+        |delta| own_demand.service_needed(delta) + interfering_demand.service_needed(delta);
     // right-hand side of Lemma 3
     let rhs = |offset, response| {
-        own_demand.service_needed(offset + 1) +
-        interfering_demand.service_needed(offset + response - own_wcet + 1)
+        own_demand.service_needed(offset + 1)
+            + interfering_demand.service_needed(offset + response - own_wcet + 1)
     };
     analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
@@ -85,4 +84,39 @@ where
         }
     };
     analysis::fixed_point_search(supply, limit, rhs)
+}
+
+pub fn rta_processing_chain2<SBF, RBF1, RBF2, RBF3>(
+    supply: &SBF,
+    chain_prefix: &RBF1,
+    chain_last_callback: &RBF2,
+    interfering_demand: &RBF3,
+    limit: Duration,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RBF1: RequestBound,
+    RBF2: RequestBound,
+    RBF3: RequestBound,
+{
+    // cost of last callback in chain under analysis
+    let wcet = chain_last_callback.max_single_job_cost();
+    // busy-window ends when all chains are quiet
+    let rhs_bw = |delta| {
+        chain_prefix.service_needed(delta)
+            + chain_last_callback.service_needed(delta)
+            + interfering_demand.service_needed(delta)
+    };
+    // right-hand side of recurrence for chain analysis
+    let rhs = |offset, response| {
+        let interference_interval = if response > wcet {
+            offset + response - wcet + 1
+        } else {
+            offset + 1
+        };
+        chain_last_callback.service_needed(offset + 1)
+            + chain_prefix.service_needed(interference_interval)
+            + interfering_demand.service_needed(interference_interval)
+    };
+    analysis::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
 }
