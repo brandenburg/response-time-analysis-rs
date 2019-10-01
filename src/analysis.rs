@@ -7,11 +7,25 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 pub trait RequestBound {
-    fn service_needed(&self, delta: Duration) -> Duration;
+    fn service_needed(&self, delta: Duration) -> Duration {
+        self.job_cost_iter(delta).sum()
+    }
 
-    fn max_single_job_cost(&self) -> Duration;
+    fn service_needed_by_n_jobs(&self, delta: Duration, max_jobs: usize) -> Duration {
+        // take the max_jobs largest job costs
+        itertools::sorted(self.job_cost_iter(delta))
+            .rev()
+            .take(max_jobs)
+            .sum()
+    }
+
+    fn max_single_job_cost(&self) -> Duration {
+        self.service_needed_by_n_jobs(1, 1)
+    }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
+
+    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
 #[derive(Clone, Debug)]
@@ -25,12 +39,26 @@ impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
         self.arrival_bound.number_arrivals(delta) * self.wcet
     }
 
+    fn service_needed_by_n_jobs(&self, delta: Duration, max_jobs: usize) -> Duration {
+        self.arrival_bound
+            .number_arrivals(delta)
+            .min(max_jobs as u64)
+            * self.wcet
+    }
+
     fn max_single_job_cost(&self) -> Duration {
         self.wcet
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         self.arrival_bound.steps_iter()
+    }
+
+    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(itertools::repeat_n(
+            self.wcet,
+            self.arrival_bound.number_arrivals(delta) as usize,
+        ))
     }
 }
 
@@ -49,6 +77,10 @@ impl<T: RequestBound> RequestBound for Vec<T> {
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
+
+    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
+    }
 }
 
 impl RequestBound for Vec<Box<dyn RequestBound>> {
@@ -65,6 +97,10 @@ impl RequestBound for Vec<Box<dyn RequestBound>> {
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
+    }
+
+    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
     }
 }
 
