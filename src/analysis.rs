@@ -40,7 +40,10 @@ impl<T: RequestBound> RequestBound for Vec<T> {
     }
 
     fn max_single_job_cost(&self) -> Duration {
-        self.iter().map(|rbf| rbf.max_single_job_cost()).max().unwrap_or(0)
+        self.iter()
+            .map(|rbf| rbf.max_single_job_cost())
+            .max()
+            .unwrap_or(0)
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -54,7 +57,10 @@ impl RequestBound for Vec<Box<dyn RequestBound>> {
     }
 
     fn max_single_job_cost(&self) -> Duration {
-        self.iter().map(|rbf| rbf.max_single_job_cost()).max().unwrap_or(0)
+        self.iter()
+            .map(|rbf| rbf.max_single_job_cost())
+            .max()
+            .unwrap_or(0)
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -66,7 +72,7 @@ pub fn fixed_point_search_with_offset<SBF, RHS>(
     supply: &SBF,
     offset: Instant,
     divergence_limit: Duration,
-    workload: RHS,
+    workload: &RHS,
 ) -> Option<Duration>
 where
     SBF: SupplyBound,
@@ -93,6 +99,27 @@ where
     None
 }
 
+pub fn brute_force_fixed_point_search_with_offset<SBF, RHS>(
+    supply: &SBF,
+    offset: Instant,
+    divergence_limit: Duration,
+    workload: &RHS,
+) -> Option<Duration>
+where
+    SBF: SupplyBound,
+    RHS: Fn(Duration) -> Duration,
+{
+    for r in 1..=divergence_limit {
+        let lhs = supply.provided_service(offset + r);
+        let rhs = workload(r);
+        if lhs == rhs {
+            dbg!((offset, r, lhs, rhs));
+            return Some(r);
+        }
+    }
+    None
+}
+
 pub fn fixed_point_search<SBF, RHS>(
     supply: &SBF,
     divergence_limit: Duration,
@@ -102,7 +129,12 @@ where
     SBF: SupplyBound,
     RHS: Fn(Duration) -> Duration,
 {
-    fixed_point_search_with_offset(supply, 0, divergence_limit, workload_bound)
+    let bw = fixed_point_search_with_offset(supply, 0, divergence_limit, &workload_bound);
+    debug_assert_eq!(
+        brute_force_fixed_point_search_with_offset(supply, 0, divergence_limit, &workload_bound),
+        bw
+    );
+    bw
 }
 
 pub fn max_response_time(
@@ -138,14 +170,22 @@ where
     // find a bound on the maximum busy-window
     if let Some(max_bw) = fixed_point_search(supply, limit, bw_demand_bound) {
         // Look at all points where the demand curve "steps".
-        // Note that steps_iter() yields interval lengths, but we are interested in 
+        // Note that steps_iter() yields interval lengths, but we are interested in
         // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
-        // to obtain the offset. 
-        let offsets = demand.steps_iter().map(|x| x - 1).take_while(|x| *x <= max_bw);
-        // for each relevant offset in the search space, 
+        // to obtain the offset.
+        let offsets = demand
+            .steps_iter()
+            .map(|x| x - 1)
+            .take_while(|x| *x <= max_bw);
+        // for each relevant offset in the search space,
         let rta_bounds = offsets.map(|offset| {
             let rhs = |delta| offset_demand_bound(offset, delta);
-            fixed_point_search_with_offset(supply, offset, limit, rhs)
+            let rta = fixed_point_search_with_offset(supply, offset, limit, &rhs);
+            debug_assert_eq!(
+                brute_force_fixed_point_search_with_offset(supply, offset, limit, &rhs),
+                rta
+            );
+            rta
         });
         max_response_time(rta_bounds)
     } else {
