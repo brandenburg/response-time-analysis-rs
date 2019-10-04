@@ -137,9 +137,6 @@ impl CurvePrefix {
                 window.pop_front();
             }
         }
-        for (i, x) in d.iter().enumerate() {
-            println!("d[{}] = {}", i, x)
-        }
 
         CurvePrefix { min_distance: d }
     }

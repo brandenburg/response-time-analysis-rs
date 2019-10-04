@@ -11,10 +11,11 @@ mod tests {
     use crate::time::Duration;
     use crate::arrivals::{self, ArrivalBound};
     use crate::supply::{self, SupplyBound};
-    use crate::demand::{self, RequestBound};
+    use crate::demand::{self, RequestBound, JobCostModel};
     use crate::ros2;
     use assert_approx_eq::assert_approx_eq;
     
+    use std::iter::FromIterator;
 
     #[test]
     fn periodic_arrivals() {
@@ -277,6 +278,52 @@ mod tests {
             let blackout_interference = service_time - r.provided_service(service_time);
             assert_eq!(blackout_interference + cost, service_time);
         }
+    }
+
+    #[test]
+    fn cost_models() {
+        let wcet: Duration = 10;
+
+        assert_eq!(wcet.cost_of_jobs(0),    0);
+        assert_eq!(wcet.cost_of_jobs(3),   30);
+        assert_eq!(wcet.cost_of_jobs(10), 100);
+        let jobs1: Vec<_> = wcet.job_cost_iter().take(5).collect();
+        assert_eq!(jobs1, [10, 10, 10, 10, 10]);        
+
+        let multi_frame: Vec<Duration> = vec![3, 2, 1];
+        assert_eq!(multi_frame.cost_of_jobs(0), 0);
+        assert_eq!(multi_frame.cost_of_jobs(1), 3);
+        assert_eq!(multi_frame.cost_of_jobs(2), 5);
+        assert_eq!(multi_frame.cost_of_jobs(3), 6);
+        assert_eq!(multi_frame.cost_of_jobs(4), 9);
+        assert_eq!(multi_frame.cost_of_jobs(5), 11);
+        assert_eq!(multi_frame.cost_of_jobs(6), 12);
+        let jobs2: Vec<_> = multi_frame.job_cost_iter().take(5).collect();
+        assert_eq!(jobs2, [3, 2, 1, 3, 2]);        
+
+        let trace = vec![1, 1, 3, 1, 2, 2, 1, 3, 1, 0, 0, 3, 2, 0, 1, 1];
+        let cf = demand::CostFunction::from_trace(trace.iter(), 3);
+        assert_eq!(cf.cost_of_jobs(0), 0);
+        assert_eq!(cf.cost_of_jobs(1), 3);
+        assert_eq!(cf.cost_of_jobs(2), 5);
+        assert_eq!(cf.cost_of_jobs(3), 6);
+        assert_eq!(cf.cost_of_jobs(4), 9);
+        assert_eq!(cf.cost_of_jobs(5), 11);
+        assert_eq!(cf.cost_of_jobs(6), 12);
+        let jobs3: Vec<_> = cf.job_cost_iter().take(10).collect();
+        assert_eq!(jobs3, [3, 2, 1, 3, 2, 1, 3, 2, 1, 3]);
+
+        let wcets = vec![15, 25, 30];
+        let cf2 = demand::CostFunction::from_iter(wcets);
+        assert_eq!(cf2.cost_of_jobs(0), 0);
+        assert_eq!(cf2.cost_of_jobs(1), 15);
+        assert_eq!(cf2.cost_of_jobs(2), 25);
+        assert_eq!(cf2.cost_of_jobs(3), 30);
+        assert_eq!(cf2.cost_of_jobs(4), 45);
+        assert_eq!(cf2.cost_of_jobs(5), 55);
+        assert_eq!(cf2.cost_of_jobs(6), 60);
+        let jobs4: Vec<_> = cf2.job_cost_iter().take(10).collect();
+        assert_eq!(jobs4, [15, 10, 5, 15, 10, 5, 15, 10, 5, 15]);
     }
 
     #[test]
