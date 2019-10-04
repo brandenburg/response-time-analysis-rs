@@ -4,7 +4,7 @@ use std::iter;
 use crate::time::{Duration, Instant};
 
 pub trait ArrivalBound {
-    fn number_arrivals(&self, delta: Duration) -> u64;
+    fn number_arrivals(&self, delta: Duration) -> usize;
 
     fn maximal_trace(&self, horizon: Instant) -> Vec<Instant> {
         let mut arrival_trace = Vec::new();
@@ -40,8 +40,8 @@ fn divide_with_ceil(a: u64, b: u64) -> u64 {
 }
 
 impl ArrivalBound for Periodic {
-    fn number_arrivals(&self, delta: Duration) -> u64 {
-        divide_with_ceil(delta, self.period)
+    fn number_arrivals(&self, delta: Duration) -> usize {
+        divide_with_ceil(delta, self.period) as usize
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -56,9 +56,9 @@ pub struct Sporadic {
 }
 
 impl ArrivalBound for Sporadic {
-    fn number_arrivals(&self, delta: Duration) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
-            divide_with_ceil(delta + self.jitter, self.min_inter_arrival)
+            divide_with_ceil(delta + self.jitter, self.min_inter_arrival) as usize
         } else {
             0
         }
@@ -150,15 +150,15 @@ impl CurvePrefix {
         *self.min_distance.last().unwrap()
     }
 
-    fn jobs_in_largest_known_distance(&self) -> u64 {
-        self.min_distance.len() as u64
+    fn jobs_in_largest_known_distance(&self) -> usize {
+        self.min_distance.len()
     }
 
-    fn lookup_arrivals(&self, delta: Duration) -> u64 {
+    fn lookup_arrivals(&self, delta: Duration) -> usize {
         // for really large vectors, this should be a binary search...
         for (i, distance) in self.min_distance.iter().enumerate() {
             if *distance + 1 > delta {
-                return (i as u64) + 1;
+                return i + 1;
             }
         }
         self.jobs_in_largest_known_distance() + 1
@@ -166,16 +166,16 @@ impl CurvePrefix {
 }
 
 impl ArrivalBound for CurvePrefix {
-    fn number_arrivals(&self, delta: Duration) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
             // first, resolve long delta by super-additivity of arrival curves
             let prefix = delta / self.largest_known_distance();
-            let prefix_jobs = prefix * self.jobs_in_largest_known_distance();
+            let prefix_jobs = prefix as usize * self.jobs_in_largest_known_distance();
             let tail = delta % self.largest_known_distance();
             if tail > self.min_job_separation() {
-                prefix_jobs + dbg!(self.lookup_arrivals(tail))
+                prefix_jobs + self.lookup_arrivals(tail) as usize
             } else {
-                prefix_jobs + dbg!((tail > 0) as u64)
+                prefix_jobs + (tail > 0) as usize
             }
         } else {
             0
@@ -238,7 +238,7 @@ pub struct Poisson {
 }
 
 impl Poisson {
-    pub fn arrival_probability(&self, delta: Duration, njobs: u32) -> f64 {
+    pub fn arrival_probability(&self, delta: Duration, njobs: usize) -> f64 {
         // quick and dirty factorial: k!
         let mut denominator = 1.0;
         for x in 1..(njobs + 1) {
@@ -264,7 +264,7 @@ pub struct ApproximatedPoisson {
 }
 
 impl ArrivalBound for ApproximatedPoisson {
-    fn number_arrivals(&self, delta: Duration) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
             let mut cumulative_prob = 0.0;
             let mut njobs = 0;
@@ -275,7 +275,7 @@ impl ArrivalBound for ApproximatedPoisson {
                 }
                 njobs += 1;
             }
-            njobs as u64
+            njobs
         } else {
             0
         }
@@ -289,7 +289,7 @@ pub struct Propagated<T: ArrivalBound> {
 }
 
 impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
-    fn number_arrivals(&self, delta: Duration) -> u64 {
+    fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
             self.input_event_model.number_arrivals(delta + self.response_time_jitter)
         } else {

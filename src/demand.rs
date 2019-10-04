@@ -1,9 +1,9 @@
 use crate::arrivals::ArrivalBound;
 use crate::time::Duration;
 
+use itertools::Itertools;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
-use itertools::Itertools;
 
 pub trait JobCostModel {
     fn cost_of_jobs(&self, n: usize) -> Duration {
@@ -33,7 +33,7 @@ impl JobCostModel for Vec<Duration> {
 
 #[derive(Clone, Debug)]
 pub struct CostFunction {
-    wcet_of_n_jobs: Vec<Duration>
+    wcet_of_n_jobs: Vec<Duration>,
 }
 
 impl JobCostModel for CostFunction {
@@ -56,7 +56,7 @@ impl JobCostModel for CostFunction {
     }
 
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new((1..).map(move |n| self.cost_of_jobs(n) - self.cost_of_jobs(n -1)))
+        Box::new((1..).map(move |n| self.cost_of_jobs(n) - self.cost_of_jobs(n - 1)))
     }
 }
 
@@ -91,21 +91,24 @@ impl CostFunction {
             }
         }
 
-        CostFunction{ wcet_of_n_jobs: cost_of }
+        CostFunction {
+            wcet_of_n_jobs: cost_of,
+        }
     }
 }
 
 impl FromIterator<Duration> for CostFunction {
-    fn from_iter<I: IntoIterator<Item=Duration>>(iter: I) -> CostFunction {
+    fn from_iter<I: IntoIterator<Item = Duration>>(iter: I) -> CostFunction {
         let mut wcets: Vec<Duration> = iter.into_iter().collect();
         // ensure the cost function is monotonic
         for i in 1..wcets.len() {
             wcets[i] = wcets[i].max(wcets[i - 1]);
         }
-        CostFunction{wcet_of_n_jobs: wcets}
+        CostFunction {
+            wcet_of_n_jobs: wcets,
+        }
     }
 }
-
 
 pub trait RequestBound {
     fn service_needed(&self, delta: Duration) -> Duration {
@@ -134,25 +137,19 @@ pub trait AggregateRequestBound: RequestBound {
 }
 
 #[derive(Clone, Debug)]
-pub struct WorstCaseRBF<B: ArrivalBound> {
-    pub wcet: Duration,
+pub struct RBF<B: ArrivalBound, C: JobCostModel> {
+    pub wcet: C,
     pub arrival_bound: B,
 }
 
-impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
+impl<B: ArrivalBound, C: JobCostModel> RequestBound for RBF<B, C> {
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.arrival_bound.number_arrivals(delta) * self.wcet
-    }
-
-    fn service_needed_by_n_jobs(&self, delta: Duration, max_jobs: usize) -> Duration {
-        self.arrival_bound
-            .number_arrivals(delta)
-            .min(max_jobs as u64)
-            * self.wcet
+        self.wcet
+            .cost_of_jobs(self.arrival_bound.number_arrivals(delta))
     }
 
     fn max_single_job_cost(&self) -> Duration {
-        self.wcet
+        self.wcet.cost_of_jobs(1)
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -160,23 +157,25 @@ impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
     }
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(itertools::repeat_n(
-            self.wcet,
-            self.arrival_bound.number_arrivals(delta) as usize,
-        ))
+        Box::new(
+            self.wcet
+                .job_cost_iter()
+                .take(self.arrival_bound.number_arrivals(delta)),
+        )
     }
 }
 
-impl<'a, B: ArrivalBound + 'a> AsRef<dyn RequestBound + 'a> for WorstCaseRBF<B> {
-    fn as_ref<'b>(&'b self) ->  &'b (dyn RequestBound +'a) {
+impl<'a, B: ArrivalBound + 'a, C: JobCostModel + 'a> AsRef<dyn RequestBound + 'a> for RBF<B, C> {
+    fn as_ref<'b>(&'b self) -> &'b (dyn RequestBound + 'a) {
         self
     }
 }
 
 impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
-
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.iter().map(|rbf| rbf.as_ref().service_needed(delta)).sum()
+        self.iter()
+            .map(|rbf| rbf.as_ref().service_needed(delta))
+            .sum()
     }
 
     fn max_single_job_cost(&self) -> Duration {
@@ -187,11 +186,20 @@ impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.as_ref().steps_iter()).kmerge().dedup())
+        Box::new(
+            self.iter()
+                .map(|rbf| rbf.as_ref().steps_iter())
+                .kmerge()
+                .dedup(),
+        )
     }
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.as_ref().job_cost_iter(delta)).kmerge())
+        Box::new(
+            self.iter()
+                .map(|rbf| rbf.as_ref().job_cost_iter(delta))
+                .kmerge(),
+        )
     }
 }
 
@@ -202,4 +210,3 @@ impl<T: AsRef<dyn RequestBound>> AggregateRequestBound for Vec<T> {
             .sum()
     }
 }
-

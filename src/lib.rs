@@ -330,7 +330,7 @@ mod tests {
     fn ros2_event_source() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
-        let rbf = demand::WorstCaseRBF{
+        let rbf = demand::RBF{
             wcet: 2,
             arrival_bound: arrivals::Sporadic{ jitter: 2, min_inter_arrival: 5 }
         };
@@ -345,14 +345,14 @@ mod tests {
     fn ros2_timer_periodic() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
-        let rbf = demand::WorstCaseRBF{
+        let rbf = demand::RBF{
             wcet: 1,
             arrival_bound: arrivals::Periodic{period: 10}
         };
 
         let interference = vec![
-            demand::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
-            demand::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
+            demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
+            demand::RBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
@@ -369,14 +369,14 @@ mod tests {
     fn ros2_timer_sporadic() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
-        let rbf = demand::WorstCaseRBF{
+        let rbf = demand::RBF{
             wcet: 1,
             arrival_bound: arrivals::Periodic{period: 10}
         };
 
         let interference: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}),
-            Box::new(demand::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
+            Box::new(demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}),
+            Box::new(demand::RBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
@@ -388,14 +388,14 @@ mod tests {
     fn ros2_pp_callback() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
-        let rbf = demand::WorstCaseRBF{
+        let rbf = demand::RBF{
             wcet: 1,
             arrival_bound: arrivals::Periodic{period: 10}
         };
 
         let interference = vec![
-            demand::WorstCaseRBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
-            demand::WorstCaseRBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
+            demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
+            demand::RBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
         ];
 
         let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
@@ -411,17 +411,21 @@ mod tests {
         let chain2_wcet = vec![1, 1, 1];
         let chain3_wcet = vec![2, 1];
 
+        let total1: Duration = chain1_wcet.iter().sum();
+        let total2: Duration = chain2_wcet.iter().sum();
+        let total3: Duration = chain3_wcet.iter().sum();
+
         let all_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain1_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total1,
                 arrival_bound: arrivals::Periodic{period: 25}
             }),
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain2_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total2,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain3_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total3,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
         ];
@@ -441,23 +445,27 @@ mod tests {
         let chain2_wcet = vec![1, 1, 1];
         let chain3_wcet = vec![2, 1];
 
-        let chain1_prefix = demand::WorstCaseRBF{
-                wcet: chain1_wcet[0..2].iter().sum(),
+        let prefix1: Duration = chain1_wcet[0..2].iter().sum();
+        let total2: Duration = chain2_wcet.iter().sum();
+        let total3: Duration = chain3_wcet.iter().sum();
+
+        let chain1_prefix = demand::RBF{
+                wcet: prefix1,
                 arrival_bound: arrivals::Periodic{period: 25}
         };
 
-        let chain1_suffix = demand::WorstCaseRBF{
+        let chain1_suffix = demand::RBF{
                 wcet: chain1_wcet[2],
                 arrival_bound: arrivals::Periodic{period: 25}
         };
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain2_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total2,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain3_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total3,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
         ];
@@ -476,15 +484,18 @@ mod tests {
         let chain2_wcet = vec![1, 1, 1];
         let chain3_wcet = vec![2, 1];
 
+        let total2: Duration = chain2_wcet.iter().sum();
+        let total3: Duration = chain3_wcet.iter().sum();
+
         let chain1_arrivals = arrivals::Periodic{period: 25};
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain2_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total2,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
-            Box::new(demand::WorstCaseRBF{
-                wcet: chain3_wcet.iter().sum(),
+            Box::new(demand::RBF{
+                wcet: total3,
                 arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
             }),
         ];

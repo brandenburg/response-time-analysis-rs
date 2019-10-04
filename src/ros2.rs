@@ -2,7 +2,7 @@ use crate::analysis;
 use crate::demand::{self, AggregateRequestBound, RequestBound};
 use crate::arrivals::ArrivalBound;
 use crate::supply::SupplyBound;
-use crate::time::*;
+use crate::time::Duration;
 
 pub fn rta_event_source<SBF, RBF>(supply: &SBF, demand: &RBF, limit: Duration) -> Option<Duration>
 where
@@ -153,12 +153,12 @@ where
         (prefix_cost, last_cb, chain_length)
     };
 
-    let prefix_rbf = demand::WorstCaseRBF {
+    let prefix_rbf = demand::RBF {
         wcet: prefix_cost,
         arrival_bound: chain_arrival_bound.clone(),
     };
 
-    let suffix_rbf = demand::WorstCaseRBF {
+    let suffix_rbf = demand::RBF {
         wcet: last_cb,
         arrival_bound: chain_arrival_bound.clone(),
     };
