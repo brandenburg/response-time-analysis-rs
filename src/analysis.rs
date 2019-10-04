@@ -94,10 +94,10 @@ impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
     }
 }
 
-impl AggregateRequestBound for Vec<Box<dyn RequestBound>> {
+impl<T: AsRef<dyn RequestBound>> AggregateRequestBound for Vec<T> {
     fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
         self.iter()
-            .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
+            .map(|rbf| rbf.as_ref().service_needed_by_n_jobs(delta, max_jobs))
             .sum()
     }
 }
