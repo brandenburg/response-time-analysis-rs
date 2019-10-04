@@ -1,4 +1,5 @@
-use crate::analysis::{self, AggregateRequestBound, RequestBound};
+use crate::analysis;
+use crate::demand::{self, AggregateRequestBound, RequestBound};
 use crate::arrivals::ArrivalBound;
 use crate::supply::SupplyBound;
 use crate::time::*;
@@ -152,12 +153,12 @@ where
         (prefix_cost, last_cb, chain_length)
     };
 
-    let prefix_rbf = analysis::WorstCaseRBF {
+    let prefix_rbf = demand::WorstCaseRBF {
         wcet: prefix_cost,
         arrival_bound: chain_arrival_bound.clone(),
     };
 
-    let suffix_rbf = analysis::WorstCaseRBF {
+    let suffix_rbf = demand::WorstCaseRBF {
         wcet: last_cb,
         arrival_bound: chain_arrival_bound.clone(),
     };
