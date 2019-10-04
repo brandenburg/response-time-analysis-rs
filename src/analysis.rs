@@ -66,53 +66,31 @@ impl<B: ArrivalBound> RequestBound for WorstCaseRBF<B> {
     }
 }
 
-impl<T: RequestBound> RequestBound for Vec<T> {
+impl<'a, B: ArrivalBound + 'a> AsRef<dyn RequestBound + 'a> for WorstCaseRBF<B> {
+    fn as_ref<'b>(&'b self) ->  &'b (dyn RequestBound +'a) {
+        self
+    }
+}
+
+impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
+
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
+        self.iter().map(|rbf| rbf.as_ref().service_needed(delta)).sum()
     }
 
     fn max_single_job_cost(&self) -> Duration {
         self.iter()
-            .map(|rbf| rbf.max_single_job_cost())
+            .map(|rbf| rbf.as_ref().max_single_job_cost())
             .max()
             .unwrap_or(0)
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
+        Box::new(self.iter().map(|rbf| rbf.as_ref().steps_iter()).kmerge().dedup())
     }
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
-    }
-}
-
-impl<T: RequestBound> AggregateRequestBound for Vec<T> {
-    fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
-        self.iter()
-            .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
-            .sum()
-    }
-}
-
-impl RequestBound for Vec<Box<dyn RequestBound>> {
-    fn service_needed(&self, delta: Duration) -> Duration {
-        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
-    }
-
-    fn max_single_job_cost(&self) -> Duration {
-        self.iter()
-            .map(|rbf| rbf.max_single_job_cost())
-            .max()
-            .unwrap_or(0)
-    }
-
-    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
-    }
-
-    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
+        Box::new(self.iter().map(|rbf| rbf.as_ref().job_cost_iter(delta)).kmerge())
     }
 }
 
