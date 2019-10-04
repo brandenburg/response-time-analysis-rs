@@ -1,7 +1,7 @@
 pub mod arrivals;
 pub mod time;
 pub mod supply;
-pub mod analysis;
+pub mod fixed_point;
 pub mod demand;
 
 pub mod ros2;

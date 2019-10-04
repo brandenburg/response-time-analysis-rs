@@ -1,6 +1,6 @@
-use crate::analysis;
-use crate::demand::{self, AggregateRequestBound, RequestBound};
 use crate::arrivals::ArrivalBound;
+use crate::demand::{self, AggregateRequestBound, RequestBound};
+use crate::fixed_point;
 use crate::supply::SupplyBound;
 use crate::time::Duration;
 
@@ -13,7 +13,7 @@ where
     let rhs_busy_window = |delta| demand.service_needed(delta);
     // right-hand side of Lemma 1
     let rhs = |offset, _response| demand.service_needed(offset + 1);
-    analysis::bound_response_time(supply, demand, rhs_busy_window, rhs, limit)
+    fixed_point::bound_response_time(supply, demand, rhs_busy_window, rhs, limit)
 }
 
 pub fn rta_timer<SBF, RBF1, RBF2>(
@@ -40,7 +40,7 @@ where
             + interfering_demand.service_needed(offset + response - own_wcet + 1)
             + blocking_bound
     };
-    analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
+    fixed_point::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
 
 pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
@@ -64,7 +64,7 @@ where
         own_demand.service_needed(offset + 1)
             + interfering_demand.service_needed(offset + response - own_wcet + 1)
     };
-    analysis::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
+    fixed_point::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }
 
 pub fn rta_processing_chain<SBF, RBF>(
@@ -85,7 +85,7 @@ where
             all_chains.service_needed(1)
         }
     };
-    analysis::fixed_point_search(supply, limit, rhs)
+    fixed_point::fixed_point_search(supply, limit, rhs)
 }
 
 pub fn rta_processing_chain2<SBF, RBF1, RBF2, RBF3>(
@@ -100,7 +100,7 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
     RBF3: RequestBound,
-{    
+{
     // busy-window ends when all chains are quiet
     let rhs_bw = |delta| {
         chain_prefix.service_needed(delta)
@@ -121,10 +121,10 @@ where
             + chain_prefix.service_needed(interference_interval)
             + interfering_demand.service_needed(interference_interval)
     };
-    analysis::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
+    fixed_point::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
 }
 
-// NOTE: Just a sketch, no proof of correctness yet. 
+// NOTE: Just a sketch, no proof of correctness yet.
 pub fn rta_processing_chain_window_aware<SBF, AB, RBF>(
     supply: &SBF,
     chain_costs: impl Iterator<Item = Duration>,
@@ -181,8 +181,11 @@ where
             offset + 1
         };
         suffix_rbf.service_needed(offset + 1)
-            + prefix_rbf.service_needed_by_n_jobs(interference_interval, num_windows as usize)
-            + interfering_demand.service_needed_by_n_jobs_per_component(interference_interval, 1 + num_windows as usize)
+            + prefix_rbf.service_needed_by_n_jobs(interference_interval, num_windows)
+            + interfering_demand.service_needed_by_n_jobs_per_component(
+                interference_interval,
+                1 + num_windows,
+            )
     };
-    analysis::bound_response_time(supply, &suffix_rbf, rhs_bw, rhs, limit)
+    fixed_point::bound_response_time(supply, &suffix_rbf, rhs_bw, rhs, limit)
 }
