@@ -10,6 +10,10 @@ pub trait JobCostModel {
         self.job_cost_iter().take(n).sum()
     }
 
+    fn least_wcet(&self, n: usize) -> Duration {
+        self.job_cost_iter().take(n).min().unwrap_or(0)
+    }
+
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
@@ -17,6 +21,10 @@ pub trait JobCostModel {
 impl JobCostModel for Duration {
     fn cost_of_jobs(&self, n: usize) -> Duration {
         n as Duration * self
+    }
+
+    fn least_wcet(&self, n: usize) -> Duration {
+        if n > 0 { *self } else { 0 }
     }
 
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -28,6 +36,10 @@ impl JobCostModel for Duration {
 impl JobCostModel for Vec<Duration> {
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(self.iter().copied().cycle())
+    }
+
+    fn least_wcet(&self, n: usize) -> Duration {
+        self.iter().take(n).copied().min().unwrap_or(0)
     }
 }
 
@@ -58,6 +70,18 @@ impl JobCostModel for CostFunction {
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new((1..).map(move |n| self.cost_of_jobs(n) - self.cost_of_jobs(n - 1)))
     }
+
+    fn least_wcet(&self, n: usize) -> Duration {
+        if n > 0 {
+            let mut least = self.wcet_of_n_jobs[0];
+            for i in 1..self.wcet_of_n_jobs.len().min(n) {
+                least = least.min(self.wcet_of_n_jobs[i] - self.wcet_of_n_jobs[i - 1])
+            }
+            least
+        } else {
+            0
+        }
+    }    
 }
 
 impl CostFunction {
@@ -123,9 +147,7 @@ pub trait RequestBound {
             .sum()
     }
 
-    fn max_single_job_cost(&self) -> Duration {
-        self.service_needed_by_n_jobs(1, 1)
-    }
+    fn least_wcet_in_interval(&self, delta: Duration) -> Duration;
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 
@@ -148,8 +170,8 @@ impl<B: ArrivalBound, C: JobCostModel> RequestBound for RBF<B, C> {
             .cost_of_jobs(self.arrival_bound.number_arrivals(delta))
     }
 
-    fn max_single_job_cost(&self) -> Duration {
-        self.wcet.cost_of_jobs(1)
+    fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
+        self.wcet.least_wcet(self.arrival_bound.number_arrivals(delta))
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -178,10 +200,10 @@ impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
             .sum()
     }
 
-    fn max_single_job_cost(&self) -> Duration {
+    fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
         self.iter()
-            .map(|rbf| rbf.as_ref().max_single_job_cost())
-            .max()
+            .map(|rbf| rbf.as_ref().least_wcet_in_interval(delta))
+            .min()
             .unwrap_or(0)
     }
 

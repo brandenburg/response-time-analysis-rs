@@ -28,14 +28,14 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
 {
-    // cost of timer callback
-    let own_wcet = own_demand.max_single_job_cost();
     // right-hand side of Lemma 6
     let rhs_bw = |delta| {
         own_demand.service_needed(delta) + blocking_bound + interfering_demand.service_needed(delta)
     };
     // right-hand side of Lemma 3
     let rhs = |offset, response| {
+        // cost of timer callback
+        let own_wcet = own_demand.least_wcet_in_interval(offset + response);
         own_demand.service_needed(offset + 1)
             + interfering_demand.service_needed(offset + response - own_wcet + 1)
             + blocking_bound
@@ -54,13 +54,13 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
 {
-    // cost of pp-based callback under analysis
-    let own_wcet = own_demand.max_single_job_cost();
     // right-hand side of Lemma 6
     let rhs_bw =
         |delta| own_demand.service_needed(delta) + interfering_demand.service_needed(delta);
     // right-hand side of Lemma 3
     let rhs = |offset, response| {
+        // cost of pp-based callback under analysis
+        let own_wcet = own_demand.least_wcet_in_interval(offset + response);
         own_demand.service_needed(offset + 1)
             + interfering_demand.service_needed(offset + response - own_wcet + 1)
     };
@@ -100,9 +100,7 @@ where
     RBF1: RequestBound,
     RBF2: RequestBound,
     RBF3: RequestBound,
-{
-    // cost of last callback in chain under analysis
-    let wcet = chain_last_callback.max_single_job_cost();
+{    
     // busy-window ends when all chains are quiet
     let rhs_bw = |delta| {
         chain_prefix.service_needed(delta)
@@ -111,6 +109,9 @@ where
     };
     // right-hand side of recurrence for chain analysis
     let rhs = |offset, response| {
+        // cost of last callback in chain under analysis
+        let wcet = chain_last_callback.least_wcet_in_interval(offset + response);
+        // account for non-preemptive execution of last callback
         let interference_interval = if response > wcet {
             offset + response - wcet + 1
         } else {
