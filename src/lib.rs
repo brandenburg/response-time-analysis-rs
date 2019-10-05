@@ -345,9 +345,10 @@ mod tests {
     fn ros2_timer_periodic() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
-        let rbf = demand::RBF{
-            wcet: 1,
-            arrival_bound: arrivals::Periodic{period: 10}
+        // use the boxed RBF variant just because we can
+        let rbf = demand::BoxedRBF{
+            wcet: Box::new(1),
+            arrival_bound: Box::new(arrivals::Periodic{period: 10})
         };
 
         let interference = vec![
