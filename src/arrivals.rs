@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use std::iter;
+use std::iter::{self, FromIterator};
 
 use crate::time::{Duration, Instant};
 
@@ -162,6 +162,19 @@ impl CurvePrefix {
             }
         }
         self.jobs_in_largest_known_distance() + 1
+    }
+}
+
+impl FromIterator<Duration> for CurvePrefix {
+    fn from_iter<I: IntoIterator<Item = Duration>>(iter: I) -> CurvePrefix {
+        let mut distances: Vec<Duration> = iter.into_iter().collect();
+        // ensure the min-distance function is monotonic
+        for i in 1..distances.len() {
+            distances[i] = distances[i].max(distances[i - 1]);
+        }
+        CurvePrefix {
+            min_distance: distances,
+        }
     }
 }
 
