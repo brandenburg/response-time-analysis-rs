@@ -1,5 +1,8 @@
 use crate::time::Duration;
 
+use auto_impl::auto_impl;
+
+#[auto_impl(&, Box, Rc)]
 pub trait SupplyBound {
     fn provided_service(&self, delta: Duration) -> Duration;
 
@@ -29,7 +32,6 @@ impl SupplyBound for DedicatedProcessor {
         demand
     }
 }
-
 
 pub struct Periodic {
     pub period: Duration,

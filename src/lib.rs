@@ -406,7 +406,8 @@ mod tests {
 
     #[test]
     fn ros2_chain() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        // Box the supply just to check that it's possible
+        let sbf: Box<dyn SupplyBound> = Box::new(supply::Periodic{period: 5, budget: 3});
 
         let chain1_wcet = vec![1, 2, 3];
         let chain2_wcet = vec![1, 1, 1];

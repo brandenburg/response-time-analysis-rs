@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 assert_approx_eq = "1.1.0"
 itertools = "0.8.0"
-auto_impl = "0.3.0"
+# need support for ?Sized, which is not yet released at time of writing (0.3.0 being current)
+auto_impl = { git = "https://github.com/auto-impl-rs/auto_impl" }
