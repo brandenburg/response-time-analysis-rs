@@ -2,7 +2,9 @@ use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
 
 use crate::time::{Duration, Instant};
+use auto_impl::auto_impl;
 
+#[auto_impl(&, Box, Rc)]
 pub trait ArrivalBound {
     fn number_arrivals(&self, delta: Duration) -> usize;
 

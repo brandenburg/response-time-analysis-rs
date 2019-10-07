@@ -4,7 +4,9 @@ use crate::time::Duration;
 use itertools::Itertools;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
+use auto_impl::auto_impl;
 
+#[auto_impl(&, Box, Rc)]
 pub trait JobCostModel {
     fn cost_of_jobs(&self, n: usize) -> Duration {
         self.job_cost_iter().take(n).sum()
@@ -134,6 +136,7 @@ impl FromIterator<Duration> for CostFunction {
     }
 }
 
+#[auto_impl(&, Box, Rc)]
 pub trait RequestBound {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.job_cost_iter(delta).sum()
@@ -154,6 +157,7 @@ pub trait RequestBound {
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a>;
 }
 
+#[auto_impl(&, Box, Rc)]
 pub trait AggregateRequestBound: RequestBound {
     fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration;
 }
@@ -192,42 +196,6 @@ impl<'a, B: ArrivalBound + 'a, C: JobCostModel + 'a> AsRef<dyn RequestBound + 'a
         self
     }
 }
-
-// Redundant implementation to cover Box because not every JobCostModel can have AsRef
-pub struct BoxedRBF {
-    pub wcet: Box<dyn JobCostModel>,
-    pub arrival_bound: Box<dyn ArrivalBound>,
-}
-
-impl RequestBound for BoxedRBF {
-    fn service_needed(&self, delta: Duration) -> Duration {
-        self.wcet
-            .cost_of_jobs(self.arrival_bound.number_arrivals(delta))
-    }
-
-    fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
-        self.wcet.least_wcet(self.arrival_bound.number_arrivals(delta))
-    }
-
-    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        self.arrival_bound.steps_iter()
-    }
-
-    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.wcet
-                .job_cost_iter()
-                .take(self.arrival_bound.number_arrivals(delta)),
-        )
-    }
-}
-
-impl<'a> AsRef<dyn RequestBound + 'a> for BoxedRBF {
-    fn as_ref<'b>(&'b self) -> &'b (dyn RequestBound + 'a) {
-        self
-    }
-}
-
 
 impl<T: AsRef<dyn RequestBound>> RequestBound for Vec<T> {
     fn service_needed(&self, delta: Duration) -> Duration {
