@@ -143,6 +143,18 @@ impl CurvePrefix {
         CurvePrefix { min_distance: d }
     }
 
+    fn extrapolate_next(&self) -> Duration {
+        let n = self.min_distance.len();
+        assert!(n >= 2);
+        (0..=(n / 2)).map(|k| self.min_distance[k] + self.min_distance[n - 1 - k]).max().unwrap()
+    }
+
+    pub fn extrapolate(&mut self, horizon: Duration) {
+        while self.largest_known_distance() < horizon {
+            self.min_distance.push(self.extrapolate_next())
+        }
+    }
+
     fn min_job_separation(&self) -> Duration {
         // minimum separation of two jobs given by first element
         self.min_distance[0]

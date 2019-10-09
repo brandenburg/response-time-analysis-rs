@@ -513,4 +513,22 @@ mod tests {
         dbg!(result);
         // assert_eq!(result.unwrap(), 72);
     }
+    
+    #[test]
+    fn curve_extrapolation() {
+        let dmin: Vec<Duration> = vec![0, 1, 2, 12, 15, 18, 21];
+        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+
+        assert_eq!(curve.number_arrivals(22), 9);
+        assert_eq!(curve.number_arrivals(23), 10);
+        assert_eq!(curve.number_arrivals(24), 11);
+
+        curve.extrapolate(100);
+
+        assert_eq!(curve.number_arrivals(22), 8);
+        assert_eq!(curve.number_arrivals(23), 8);
+        assert_eq!(curve.number_arrivals(24), 8);
+        assert_eq!(curve.number_arrivals(25), 9);
+    }
+
 }
