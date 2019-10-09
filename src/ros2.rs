@@ -6,8 +6,8 @@ use crate::time::Duration;
 
 pub fn rta_event_source<SBF, RBF>(supply: &SBF, demand: &RBF, limit: Duration) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF: RequestBound + ?Sized,
 {
     // right-hand side of Lemma 6
     let rhs_busy_window = |delta| demand.service_needed(delta);
@@ -24,9 +24,9 @@ pub fn rta_timer<SBF, RBF1, RBF2>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF1: RequestBound,
-    RBF2: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF1: RequestBound + ?Sized,
+    RBF2: RequestBound + ?Sized,
 {
     // right-hand side of Lemma 6
     let rhs_bw = |delta| {
@@ -50,9 +50,9 @@ pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF1: RequestBound,
-    RBF2: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF1: RequestBound + ?Sized,
+    RBF2: RequestBound + ?Sized,
 {
     // right-hand side of Lemma 6
     let rhs_bw =
@@ -74,8 +74,8 @@ pub fn rta_processing_chain<SBF, RBF>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF: RequestBound + ?Sized,
 {
     // right-hand side of Lemma 3
     let rhs = |response| {
@@ -96,10 +96,10 @@ pub fn rta_processing_chain2<SBF, RBF1, RBF2, RBF3>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF1: RequestBound,
-    RBF2: RequestBound,
-    RBF3: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF1: RequestBound + ?Sized,
+    RBF2: RequestBound + ?Sized,
+    RBF3: RequestBound + ?Sized,
 {
     // busy-window ends when all chains are quiet
     let rhs_bw = |delta| {
@@ -133,9 +133,9 @@ pub fn rta_processing_chain_window_aware<SBF, AB, RBF>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
+    SBF: SupplyBound + ?Sized,
     AB: ArrivalBound + Clone,
-    RBF: AggregateRequestBound,
+    RBF: AggregateRequestBound + ?Sized,
 {
     // split costs by prefix and last callback in chain, and count callbacks
     let (prefix_cost, last_cb, chain_length) = {

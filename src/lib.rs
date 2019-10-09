@@ -380,7 +380,7 @@ mod tests {
             Box::new(demand::RBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
         ];
 
-        let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
+        let result = ros2::rta_timer(&sbf, &rbf, &interference[0..2], 0, 100);
         assert!(result.is_some());
         assert_eq!(result.unwrap(), 17);
     }

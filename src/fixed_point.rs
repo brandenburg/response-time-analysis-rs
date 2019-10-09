@@ -11,7 +11,7 @@ pub fn fixed_point_search_with_offset<SBF, RHS>(
     workload: &RHS,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
+    SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Duration,
 {
     let mut assumed_response_time = 1;
@@ -42,7 +42,7 @@ pub fn brute_force_fixed_point_search_with_offset<SBF, RHS>(
     workload: &RHS,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
+    SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Duration,
 {
     for r in 1..=divergence_limit {
@@ -62,7 +62,7 @@ pub fn fixed_point_search<SBF, RHS>(
     workload_bound: RHS,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
+    SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Duration,
 {
     let bw = fixed_point_search_with_offset(supply, 0, divergence_limit, &workload_bound);
@@ -98,8 +98,8 @@ pub fn bound_response_time<SBF, RBF, F, G>(
     limit: Duration,
 ) -> Option<Duration>
 where
-    SBF: SupplyBound,
-    RBF: RequestBound,
+    SBF: SupplyBound + ?Sized,
+    RBF: RequestBound + ?Sized,
     F: Fn(Duration) -> Duration,
     G: Fn(Instant, Duration) -> Duration,
 {
