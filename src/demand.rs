@@ -237,7 +237,7 @@ impl<T: RequestBound> AggregateRequestBound for Vec<T> {
     }
 }
 
-impl<T: RequestBound> RequestBound for &[T] {
+impl<T: RequestBound> RequestBound for [T] {
     fn service_needed(&self, delta: Duration) -> Duration {
         self.iter()
             .map(|rbf| rbf.service_needed(delta))
@@ -269,7 +269,7 @@ impl<T: RequestBound> RequestBound for &[T] {
     }
 }
 
-impl<T: RequestBound> AggregateRequestBound for &[T] {
+impl<T: RequestBound> AggregateRequestBound for [T] {
     fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
         self.iter()
             .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
