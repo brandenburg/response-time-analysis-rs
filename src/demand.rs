@@ -236,3 +236,43 @@ impl<T: RequestBound> AggregateRequestBound for Vec<T> {
             .sum()
     }
 }
+
+impl<T: RequestBound> RequestBound for &[T] {
+    fn service_needed(&self, delta: Duration) -> Duration {
+        self.iter()
+            .map(|rbf| rbf.service_needed(delta))
+            .sum()
+    }
+
+    fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
+        self.iter()
+            .map(|rbf| rbf.least_wcet_in_interval(delta))
+            .min()
+            .unwrap_or(0)
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|rbf| rbf.steps_iter())
+                .kmerge()
+                .dedup(),
+        )
+    }
+
+    fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|rbf| rbf.job_cost_iter(delta))
+                .kmerge(),
+        )
+    }
+}
+
+impl<T: RequestBound> AggregateRequestBound for &[T] {
+    fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Duration {
+        self.iter()
+            .map(|rbf| rbf.service_needed_by_n_jobs(delta, max_jobs))
+            .sum()
+    }
+}
