@@ -88,6 +88,9 @@ impl From<Periodic> for Sporadic {
 
 #[derive(Clone, Debug)]
 pub struct CurvePrefix {
+    // Convention: we do not store the mininum distance for 0 and 1 jobs.
+    // So the min_distance vector at offset 0 contains the minimum
+    // separation of two jobs.
     min_distance: Vec<Duration>,
 }
 
@@ -120,11 +123,12 @@ impl CurvePrefix {
             // look at all arrival times in the sliding window, in order
             // from most recent to oldest
             for (i, v) in window.iter().rev().enumerate() {
-                // compute the separation from the current arrival t to the arrival
-                // of the (i + 1)-th preceding job
+                // Compute the separation from the current arrival t to the arrival
+                // of the (i + 1)-th preceding job.
+                // So if i=0, we are looking at two adjacent jobs.
                 let observed_gap = t - v;
                 if d.len() <= i {
-                    // we have not yet seen (i + 1) jobs in a row -> first sample
+                    // we have not yet seen (i + 2) jobs in a row -> first sample
                     d.push(observed_gap)
                 } else {
                     // update belief if we have seen something of less separation
@@ -140,18 +144,25 @@ impl CurvePrefix {
             }
         }
 
+        // FIXME: d must not be empty
+        assert!(!d.is_empty());
         CurvePrefix { min_distance: d }
     }
 
     fn extrapolate_next(&self) -> Duration {
         let n = self.min_distance.len();
         assert!(n >= 2);
-        (0..=(n / 2)).map(|k| self.min_distance[k] + self.min_distance[n - 1 - k]).max().unwrap()
+        // we are using n - k - 1 here because we don't store n=0 and n=1, so the 
+        // index is offset by 2
+        (0..=(n / 2)).map(|k| self.min_distance[k] + self.min_distance[n - k - 1]).max().unwrap()
     }
 
     pub fn extrapolate(&mut self, horizon: Duration) {
-        while self.largest_known_distance() < horizon {
-            self.min_distance.push(self.extrapolate_next())
+        // we cannot meaningfully extrapolate degenerate cases, so let's skip those
+        if self.min_distance.len() >= 2 {
+            while self.largest_known_distance() < horizon {
+                self.min_distance.push(self.extrapolate_next())
+            }
         }
     }
 
@@ -168,14 +179,27 @@ impl CurvePrefix {
         self.min_distance.len()
     }
 
+    // note: does not extrapolate
     fn lookup_arrivals(&self, delta: Duration) -> usize {
-        // for really large vectors, this should be a binary search...
-        for (i, distance) in self.min_distance.iter().enumerate() {
-            if *distance + 1 > delta {
-                return i + 1;
+        // TODO: for really large vectors, this should be a binary search...
+        for (i, distance_of_njobs) in self.min_distance.iter().enumerate() {
+            let njobs = i + 2; // we do not store n=0 and n=1
+            if delta <= *distance_of_njobs {
+                return njobs - 1;
             }
         }
-        self.jobs_in_largest_known_distance() + 1
+        // should never get here
+        panic!()
+    }
+
+    // note: does not extrapolate, so extremely pessimistic for n > self.min_distance.len() - 1
+    pub fn min_distance(&self, n: usize) -> Duration {
+        if n > 1 {
+            // account for the fact that we store distances only for 2+ jobs
+            self.min_distance[(n - 2).min(self.min_distance.len() - 1)]
+        } else {
+            0
+        }
     }
 }
 
@@ -186,6 +210,7 @@ impl FromIterator<Duration> for CurvePrefix {
         for i in 1..distances.len() {
             distances[i] = distances[i].max(distances[i - 1]);
         }
+        assert!(!distances.is_empty());
         CurvePrefix {
             min_distance: distances,
         }

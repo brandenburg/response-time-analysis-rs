@@ -507,28 +507,53 @@ mod tests {
             chain1_wcet.iter().copied(),
             &chain1_arrivals,
             &other_chains,
-            1000
+            1000,
         );
         assert!(result.is_some());
         dbg!(result);
         // assert_eq!(result.unwrap(), 72);
     }
-    
     #[test]
     fn curve_extrapolation() {
-        let dmin: Vec<Duration> = vec![0, 1, 2, 12, 15, 18, 21];
+        let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
         let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
 
-        assert_eq!(curve.number_arrivals(22), 9);
-        assert_eq!(curve.number_arrivals(23), 10);
-        assert_eq!(curve.number_arrivals(24), 11);
+        // assert_eq!(curve.number_arrivals(22), 9);
+        // assert_eq!(curve.number_arrivals(23), 10);
+        // assert_eq!(curve.number_arrivals(25), 11);
 
-        curve.extrapolate(100);
+        curve.extrapolate(500);
 
-        assert_eq!(curve.number_arrivals(22), 8);
-        assert_eq!(curve.number_arrivals(23), 8);
-        assert_eq!(curve.number_arrivals(24), 8);
-        assert_eq!(curve.number_arrivals(25), 9);
+        let dmin_ref: Vec<Duration> = vec![
+            0, 0, 1, 2, 12, 15, 18, 21, 27, 30, 33, 39, 42, 45, 51, 54, 57, 63, 66, 69, 75, 78, 81,
+            87, 90, 93, 99, 102, 105, 111, 114, 117, 123, 126, 129, 135, 138, 141, 147, 150, 153,
+            159, 162, 165, 171, 174, 177, 183, 186, 189, 195, 198, 201, 207, 210, 213, 219, 222,
+            225, 231, 234, 237, 243, 246, 249, 255, 258, 261, 267, 270, 273, 279, 282, 285, 291,
+            294, 297, 303, 306, 309, 315, 318, 321, 327, 330, 333, 339, 342, 345, 351, 354, 357,
+            363, 366, 369, 375, 378, 381, 387, 390,
+        ];
+
+        for (x, dist) in dmin_ref.iter().enumerate() {
+            if x > dmin.len() + 1 {
+                let all_combinations: Vec<_> = (2..x)
+                    .map(|k| (k, curve.min_distance(x - k + 1) + curve.min_distance(k)))
+                    .collect();
+                let y = all_combinations.iter().map(|(_, y)| *y).max().unwrap_or(0);
+                assert_eq!(y, curve.min_distance(x));
+            }
+            assert_eq!(*dist, curve.min_distance(x));
+        }
+
+        let ab_ref: Vec<usize> = vec![
+            0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 7, 7, 7, 8,
+            8, 8, 9, 9, 9, 10, 10, 10, 10, 10, 10, 11, 11, 11, 12, 12, 12, 13, 13, 13, 13, 13, 13,
+            14, 14, 14, 15, 15, 15, 16, 16, 16, 16, 16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19,
+            19, 19, 20, 20, 20, 21, 21, 21, 22, 22, 22, 22, 22, 22, 23, 23, 23, 24, 24, 24, 25, 25,
+            25, 25, 25, 25,
+        ];
+
+        for (delta, njobs) in ab_ref.iter().enumerate() {
+            assert_eq!(*njobs, curve.number_arrivals(delta as Duration));
+        }
     }
-
 }
