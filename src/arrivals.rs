@@ -8,19 +8,6 @@ use auto_impl::auto_impl;
 pub trait ArrivalBound {
     fn number_arrivals(&self, delta: Duration) -> usize;
 
-    fn maximal_trace(&self, horizon: Instant) -> Vec<Instant> {
-        let mut arrival_trace = Vec::new();
-
-        for delta in 1..=horizon {
-            let n = self.number_arrivals(delta);
-            while n as usize > arrival_trace.len() {
-                arrival_trace.push(delta - 1)
-            }
-        }
-
-        arrival_trace
-    }
-
     // The sequence of interval lengths for which the arrival bound "steps", i.e.,
     // where it shows an increase.
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {

@@ -210,16 +210,6 @@ mod tests {
         assert_approx_eq!(p.arrival_probability(100, 4), 0.015, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 5), 0.003, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 6), 0.0005, 0.001);
-
-        // let a = p.approximate(0.0001);
-
-        // for y in a.steps_iter().take(100) {
-        //     println!("step at interval length {} [#events <= {}]", y, a.number_arrivals(y));
-        // }
-        // let t = a.maximal_trace(2000);
-        // for y in t {
-        //     println!("event at time {} [at most {} events]", y, a.number_arrivals(y + 1));
-        // }
     }
 
     #[test]
