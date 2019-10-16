@@ -327,6 +327,15 @@ mod tests {
     }
 
     #[test]
+    fn cost_extrapolation() {
+        let wcets = vec![100, 101, 102, 103, 104, 105, 205, 206];
+        let mut cf = demand::CostFunction::from_iter(wcets);
+        assert_eq!(cf.cost_of_jobs(9), 306);
+        cf.extrapolate(10);
+        assert_eq!(cf.cost_of_jobs(9), 207);
+    }
+
+    #[test]
     fn ros2_event_source() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 

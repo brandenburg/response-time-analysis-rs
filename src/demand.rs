@@ -121,6 +121,23 @@ impl CostFunction {
             wcet_of_n_jobs: cost_of,
         }
     }
+
+    fn extrapolate_next(&self) -> Duration {
+        let n = self.wcet_of_n_jobs.len();
+        assert!(n >= 2);
+        // Upper-bound cost of n jobs as the sum of the bounds on the costs of
+        // n-k jobs and k jobs. Since we don't store n=0, this is offset by one.
+        (0..=(n / 2)).map(|k| self.wcet_of_n_jobs[k] + self.wcet_of_n_jobs[n - k - 1]).min().unwrap()
+    }
+
+    pub fn extrapolate(&mut self, n: usize) {
+        // We need at least three samples to extrapolate, so let's do nothing if we have fewer.
+        if self.wcet_of_n_jobs.len() >= 3 {
+            while dbg!(self.wcet_of_n_jobs.len()) < n - 1 {
+                self.wcet_of_n_jobs.push(dbg!(self.extrapolate_next()))
+            }
+        }
+    }
 }
 
 impl FromIterator<Duration> for CostFunction {
