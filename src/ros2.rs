@@ -36,8 +36,14 @@ where
     let rhs = |offset, response| {
         // cost of timer callback
         let own_wcet = own_demand.least_wcet_in_interval(offset + response);
+        // determine timeframe during which other callbacks can delay us
+        let interference_interval = if response > own_wcet {
+            offset + response - own_wcet + 1
+        } else {
+            offset + 1
+        };
         own_demand.service_needed(offset + 1)
-            + interfering_demand.service_needed(offset + response - own_wcet + 1)
+            + interfering_demand.service_needed(interference_interval)
             + blocking_bound
     };
     fixed_point::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
@@ -61,8 +67,14 @@ where
     let rhs = |offset, response| {
         // cost of pp-based callback under analysis
         let own_wcet = own_demand.least_wcet_in_interval(offset + response);
+        // determine timeframe during which other callbacks can delay us
+        let interference_interval = if response > own_wcet {
+            offset + response - own_wcet + 1
+        } else {
+            offset + 1
+        };
         own_demand.service_needed(offset + 1)
-            + interfering_demand.service_needed(offset + response - own_wcet + 1)
+            + interfering_demand.service_needed(interference_interval)
     };
     fixed_point::bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
 }

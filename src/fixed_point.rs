@@ -20,11 +20,6 @@ where
         let response_time_bound = supply.service_time(demand) - offset;
         if response_time_bound <= assumed_response_time {
             // we have converged
-            dbg!(offset);
-            dbg!(assumed_response_time);
-            dbg!(supply.provided_service(response_time_bound + offset));
-            dbg!(workload(response_time_bound));
-            dbg!(response_time_bound);
             return Some(response_time_bound);
         } else {
             // continue iterating
@@ -49,7 +44,6 @@ where
         let lhs = supply.provided_service(offset + r);
         let rhs = workload(r);
         if lhs == rhs {
-            dbg!((offset, r, lhs, rhs));
             return Some(r);
         }
     }
