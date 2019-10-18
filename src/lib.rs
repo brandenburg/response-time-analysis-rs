@@ -228,7 +228,7 @@ mod tests {
     #[test]
     fn aggregated_arrivals() {
         let agg: Vec<Box<dyn ArrivalBound>> = vec![
-            Box::new(arrivals::Periodic{ period: 3 }),
+            Box::new(arrivals::Sporadic{ min_inter_arrival: 3, jitter: 0 }),
             Box::new(arrivals::Periodic{ period: 5 })
         ];
 
@@ -254,6 +254,18 @@ mod tests {
 
         let steps: Vec<Duration> = ab.steps_iter().take_while(|x| *x < 17).collect();
         assert_eq!(steps, vec![1, 4, 6, 7, 10, 11, 13, 16]);
+
+        let a = &ab[0..1];
+        assert_eq!(a.number_arrivals(10), 4);
+
+        let boxed = Box::new(agg);
+        assert_eq!(boxed.number_arrivals(16), 10);
+
+        let a_boxed = &boxed[0..1];
+        assert_eq!(a_boxed.number_arrivals(10), 4);
+
+        let boxed_ptr: &dyn ArrivalBound = &boxed;
+        assert_eq!(boxed_ptr.number_arrivals(10), 6);
     }
 
     #[test]

@@ -367,3 +367,20 @@ impl<T: ArrivalBound> ArrivalBound for [T] {
         )
     }
 }
+
+// repeated implementation for Vec<T> because otherwise Vec<Box<dyn ArrivalBound>>
+// is not recognized as an ArrivalBound, despite the above blanket implementation for
+impl<T: ArrivalBound> ArrivalBound for Vec<T> {
+    fn number_arrivals(&self, delta: Duration) -> usize {
+        self.iter().map(|ab| ab.number_arrivals(delta)).sum()
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|ab| ab.steps_iter())
+                .kmerge()
+                .dedup(),
+        )
+    }
+}
