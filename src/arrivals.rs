@@ -19,6 +19,8 @@ pub trait ArrivalBound {
             }),
         )
     }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -37,6 +39,12 @@ impl ArrivalBound for Periodic {
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new((0..).map(move |j| j * self.period + 1))
+    }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        let mut ab = Box::new(Sporadic::from(self.clone()));
+        ab.jitter = jitter;
+        ab
     }
 }
 
@@ -63,6 +71,12 @@ impl ArrivalBound for Sporadic {
                     .map(move |j| j * self.min_inter_arrival + 1 - self.jitter),
             ),
         )
+    }
+
+    fn clone_with_jitter(&self, added_jitter: Duration) -> Box<dyn ArrivalBound> {
+        let mut ab = Box::new(self.clone());
+        ab.jitter += added_jitter;
+        ab
     }
 }
 
@@ -141,9 +155,12 @@ impl CurvePrefix {
     fn extrapolate_next(&self) -> Duration {
         let n = self.min_distance.len();
         assert!(n >= 2);
-        // we are using n - k - 1 here because we don't store n=0 and n=1, so the 
+        // we are using n - k - 1 here because we don't store n=0 and n=1, so the
         // index is offset by 2
-        (0..=(n / 2)).map(|k| self.min_distance[k] + self.min_distance[n - k - 1]).max().unwrap()
+        (0..=(n / 2))
+            .map(|k| self.min_distance[k] + self.min_distance[n - k - 1])
+            .max()
+            .unwrap()
     }
 
     pub fn extrapolate(&mut self, horizon: Duration) {
@@ -234,7 +251,7 @@ impl ArrivalBound for CurvePrefix {
         struct StepsIter {
             sum: Instant,
             step_sizes: Vec<Duration>,
-            idx: usize
+            idx: usize,
         }
 
         impl Iterator for StepsIter {
@@ -248,7 +265,20 @@ impl ArrivalBound for CurvePrefix {
             }
         }
 
-        Box::new(StepsIter{sum: 1, step_sizes: diffs, idx: 0})
+        Box::new(StepsIter {
+            sum: 1,
+            step_sizes: diffs,
+            idx: 0,
+        })
+    }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        let mut ab = Box::new(self.clone());
+        for d in ab.min_distance.iter_mut() {
+            // shorten minimum distance by the added jitter
+            *d = if *d > jitter { *d - jitter } else { 0 };
+        }
+        ab
     }
 }
 
@@ -299,6 +329,7 @@ impl Poisson {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 pub struct ApproximatedPoisson {
     poisson: Poisson,
     epsilon: f64,
@@ -321,22 +352,28 @@ impl ArrivalBound for ApproximatedPoisson {
             0
         }
     }
-}
 
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        Box::new(Propagated {
+            response_time_jitter: jitter,
+            input_event_model: self.clone(),
+        })
+    }
+}
 
 pub struct Propagated<T: ArrivalBound> {
     pub response_time_jitter: Duration,
-    pub input_event_model: T
+    pub input_event_model: T,
 }
 
 impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
     fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
-            self.input_event_model.number_arrivals(delta + self.response_time_jitter)
+            self.input_event_model
+                .number_arrivals(delta + self.response_time_jitter)
         } else {
             0
         }
-        
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -346,11 +383,18 @@ impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
                 self.input_event_model
                     .steps_iter()
                     .filter(move |x| *x > self.response_time_jitter)
-                    .map(move |x| x - self.response_time_jitter)
-            )
+                    .map(move |x| x - self.response_time_jitter),
+            ),
         )
     }
 
+    fn clone_with_jitter(&self, added_jitter: Duration) -> Box<dyn ArrivalBound> {
+        Box::new(Propagated {
+            response_time_jitter: self.response_time_jitter + added_jitter,
+            // a bit of hack to get around liftime trouble
+            input_event_model: self.input_event_model.clone_with_jitter(0),
+        })
+    }
 }
 
 impl<T: ArrivalBound> ArrivalBound for [T] {
@@ -359,12 +403,13 @@ impl<T: ArrivalBound> ArrivalBound for [T] {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|ab| ab.steps_iter())
-                .kmerge()
-                .dedup(),
-        )
+        Box::new(self.iter().map(|ab| ab.steps_iter()).kmerge().dedup())
+    }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        let cloned: Vec<Box<dyn ArrivalBound>> =
+            self.iter().map(|ab| ab.clone_with_jitter(jitter)).collect();
+        Box::new(cloned)
     }
 }
 
@@ -376,11 +421,12 @@ impl<T: ArrivalBound> ArrivalBound for Vec<T> {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|ab| ab.steps_iter())
-                .kmerge()
-                .dedup(),
-        )
+        Box::new(self.iter().map(|ab| ab.steps_iter()).kmerge().dedup())
+    }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        let cloned: Vec<Box<dyn ArrivalBound>> =
+            self.iter().map(|ab| ab.clone_with_jitter(jitter)).collect();
+        Box::new(cloned)
     }
 }
