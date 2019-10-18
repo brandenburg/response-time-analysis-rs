@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
 
+use itertools::Itertools;
+
 use crate::time::{Duration, Instant};
 use auto_impl::auto_impl;
 
@@ -349,4 +351,19 @@ impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
         )
     }
 
+}
+
+impl<T: ArrivalBound> ArrivalBound for [T] {
+    fn number_arrivals(&self, delta: Duration) -> usize {
+        self.iter().map(|ab| ab.number_arrivals(delta)).sum()
+    }
+
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new(
+            self.iter()
+                .map(|ab| ab.steps_iter())
+                .kmerge()
+                .dedup(),
+        )
+    }
 }

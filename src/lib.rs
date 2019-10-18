@@ -226,6 +226,37 @@ mod tests {
     }
 
     #[test]
+    fn aggregated_arrivals() {
+        let agg: Vec<Box<dyn ArrivalBound>> = vec![
+            Box::new(arrivals::Periodic{ period: 3 }),
+            Box::new(arrivals::Periodic{ period: 5 })
+        ];
+
+        let ab = &agg;
+
+        assert_eq!(ab.number_arrivals(0), 0);
+        assert_eq!(ab.number_arrivals(1), 2);
+        assert_eq!(ab.number_arrivals(2), 2);
+        assert_eq!(ab.number_arrivals(3), 2);
+        assert_eq!(ab.number_arrivals(4), 3);
+        assert_eq!(ab.number_arrivals(5), 3);
+        assert_eq!(ab.number_arrivals(6), 4);
+        assert_eq!(ab.number_arrivals(7), 5);
+        assert_eq!(ab.number_arrivals(8), 5);
+        assert_eq!(ab.number_arrivals(9), 5);
+        assert_eq!(ab.number_arrivals(10), 6);
+        assert_eq!(ab.number_arrivals(11), 7);
+        assert_eq!(ab.number_arrivals(12), 7);
+        assert_eq!(ab.number_arrivals(13), 8);
+        assert_eq!(ab.number_arrivals(14), 8);
+        assert_eq!(ab.number_arrivals(15), 8);
+        assert_eq!(ab.number_arrivals(16), 10);
+
+        let steps: Vec<Duration> = ab.steps_iter().take_while(|x| *x < 17).collect();
+        assert_eq!(steps, vec![1, 4, 6, 7, 10, 11, 13, 16]);
+    }
+
+    #[test]
     fn periodic_supply() {
         let r = supply::Periodic{period: 5, budget: 3};
 
