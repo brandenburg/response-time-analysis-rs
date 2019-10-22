@@ -379,7 +379,7 @@ mod tests {
 
         let result = ros2::rta_event_source(&sbf, &rbf, 100);
 
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 7);
     }
 
@@ -399,12 +399,12 @@ mod tests {
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 12);
 
 
         let result2 = ros2::rta_timer(&sbf, &rbf, &interference, 4, 100);
-        assert!(result2.is_some());
+        assert!(result2.is_ok());
         assert_eq!(result2.unwrap(), 20);
     }
 
@@ -423,7 +423,7 @@ mod tests {
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference[0..2], 0, 100);
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 17);
     }
 
@@ -442,7 +442,7 @@ mod tests {
         ];
 
         let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 12);
     }
 
@@ -477,7 +477,7 @@ mod tests {
         let last_cb = *chain1_wcet.iter().last().unwrap();
 
         let result = ros2::rta_processing_chain(&sbf, &all_chains, last_cb, 1000);
-        assert!(result.is_some());
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 152);
     }
 
@@ -515,8 +515,7 @@ mod tests {
         ];
 
         let result = ros2::rta_processing_chain2(&sbf, &chain1_prefix, &chain1_suffix, &other_chains, 1000);
-        assert!(result.is_some());
-        dbg!(result);
+        assert!(result.is_ok());
         assert_eq!(result.unwrap(), 72);
     }
 
@@ -551,8 +550,8 @@ mod tests {
             &other_chains,
             1000,
         );
-        assert!(result.is_some());
-        dbg!(result);
+        assert!(result.is_ok());
+        // dbg!(result);
         // assert_eq!(result.unwrap(), 72);
     }
     #[test]

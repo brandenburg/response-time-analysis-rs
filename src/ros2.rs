@@ -4,7 +4,7 @@ use crate::fixed_point;
 use crate::supply::SupplyBound;
 use crate::time::Duration;
 
-pub fn rta_event_source<SBF, RBF>(supply: &SBF, demand: &RBF, limit: Duration) -> Option<Duration>
+pub fn rta_event_source<SBF, RBF>(supply: &SBF, demand: &RBF, limit: Duration) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
@@ -22,7 +22,7 @@ pub fn rta_timer<SBF, RBF1, RBF2>(
     interfering_demand: &RBF2,
     blocking_bound: Duration,
     limit: Duration,
-) -> Option<Duration>
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF1: RequestBound + ?Sized,
@@ -54,7 +54,7 @@ pub fn rta_polling_point_callback<SBF, RBF1, RBF2>(
     own_demand: &RBF1,
     interfering_demand: &RBF2,
     limit: Duration,
-) -> Option<Duration>
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF1: RequestBound + ?Sized,
@@ -84,7 +84,7 @@ pub fn rta_processing_chain<SBF, RBF>(
     all_chains: &RBF,
     last_callback_wcet: Duration,
     limit: Duration,
-) -> Option<Duration>
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
@@ -106,7 +106,7 @@ pub fn rta_processing_chain2<SBF, RBF1, RBF2, RBF3>(
     chain_last_callback: &RBF2,
     interfering_demand: &RBF3,
     limit: Duration,
-) -> Option<Duration>
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF1: RequestBound + ?Sized,
@@ -143,7 +143,7 @@ pub fn rta_processing_chain_window_aware<SBF, AB, RBF>(
     chain_arrival_bound: &AB,
     interfering_demand: &RBF,
     limit: Duration,
-) -> Option<Duration>
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     AB: ArrivalBound + Clone,
