@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
 
@@ -319,6 +320,39 @@ impl From<Sporadic> for CurvePrefix {
         CurvePrefix::unroll_sporadic(&s, n * s.min_inter_arrival)
     }
 }
+
+pub struct ExtrapolatingCurvePrefix {
+    prefix: RefCell<CurvePrefix>
+}
+
+impl ExtrapolatingCurvePrefix {
+    pub fn new(curve: CurvePrefix) -> Self {
+        ExtrapolatingCurvePrefix {
+            prefix: RefCell::new(curve)
+        }
+    }
+}
+
+impl ArrivalBound for ExtrapolatingCurvePrefix {
+    fn number_arrivals(&self, delta: Duration) -> usize {
+        // extrapolate up to the requested duration
+        let mut curve = self.prefix.borrow_mut();
+        curve.extrapolate(delta + 1);
+        curve.number_arrivals(delta)
+    }
+
+    fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
+        let mut cloned = self.prefix.borrow().clone();
+
+        for d in cloned.min_distance.iter_mut() {
+            // shorten minimum distance by the added jitter
+            *d = if *d > jitter { *d - jitter } else { 0 };
+        }
+        Box::new(ExtrapolatingCurvePrefix::new(cloned))
+    }
+
+}
+
 
 #[derive(Copy, Clone, Debug)]
 pub struct Poisson {
