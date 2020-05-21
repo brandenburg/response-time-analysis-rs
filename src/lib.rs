@@ -213,6 +213,18 @@ mod tests {
     }
 
     #[test]
+    fn never_arrives() {
+        let p = arrivals::Never {};
+        assert_eq!(p.number_arrivals(10), 0);
+        let steps : Vec<_> = p.steps_iter().collect();
+        assert_eq!(steps, []);
+        let prop = arrivals::Propagated { input_event_model: p, response_time_jitter: 3 };
+        assert_eq!(prop.number_arrivals(10), 0);
+        let steps : Vec<_> = p.steps_iter().collect();
+        assert_eq!(steps, [])
+    }
+
+    #[test]
     fn propagated_jitter() {
         let p = arrivals::Periodic{ period: 10 };
         let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3};
