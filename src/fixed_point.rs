@@ -65,7 +65,10 @@ where
     for r in 1..=divergence_limit {
         let lhs = supply.provided_service(offset + r);
         let rhs = workload(r);
-        if lhs == rhs {
+        // corner case: zero demand is trivially satisfied immediately
+        if rhs == 0 {
+            return Ok(0)
+        } else if lhs == rhs {
             return Ok(r);
         }
     }
@@ -109,7 +112,9 @@ pub fn max_response_time(
                 a.unwrap().cmp(&b.unwrap())
             }
         })
-        .unwrap()
+        // If we have no result at all, there are no demand steps, so the
+        // response-time is trivially zero.
+        .unwrap_or(Ok(0))
 }
 
 pub fn bound_response_time<SBF, RBF, F, G>(

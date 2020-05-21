@@ -451,6 +451,20 @@ mod tests {
     }
 
     #[test]
+    fn ros2_never() {
+        let sbf = supply::Periodic{period: 5, budget: 3};
+
+        let rbf = demand::RBF{
+            wcet: 2,
+            arrival_bound: arrivals::Never{}
+        };
+
+        let result = ros2::rta_event_source(&sbf, &rbf, 100);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 0);
+    }
+
+    #[test]
     fn ros2_timer_periodic() {
         let sbf = supply::Periodic{period: 5, budget: 3};
 
