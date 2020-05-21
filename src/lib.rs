@@ -14,7 +14,7 @@ mod tests {
     use crate::demand::{self, RequestBound, JobCostModel};
     use crate::ros2;
     use assert_approx_eq::assert_approx_eq;
-    
+
     use std::iter::FromIterator;
 
     #[test]
@@ -22,7 +22,7 @@ mod tests {
         let a = arrivals::Periodic{ period: 10 };
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);        
+        assert_eq!(a.number_arrivals(8),  1);
         assert_eq!(a.number_arrivals(10),  1);
         assert_eq!(a.number_arrivals(11),  2);
         assert_eq!(a.number_arrivals(12),  2);
@@ -38,7 +38,7 @@ mod tests {
         let a = arrivals::CurvePrefix::unroll_sporadic(&s, 1000);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);        
+        assert_eq!(a.number_arrivals(8),  1);
         assert_eq!(a.number_arrivals(10),  1);
         assert_eq!(a.number_arrivals(11),  2);
         assert_eq!(a.number_arrivals(12),  2);
@@ -55,7 +55,7 @@ mod tests {
         let a = arrivals::CurvePrefix::from(s);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);        
+        assert_eq!(a.number_arrivals(8),  1);
         assert_eq!(a.number_arrivals(10),  1);
         assert_eq!(a.number_arrivals(11),  2);
         assert_eq!(a.number_arrivals(12),  2);
@@ -70,7 +70,7 @@ mod tests {
         let a = arrivals::CurvePrefix::from(p);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);        
+        assert_eq!(a.number_arrivals(8),  1);
         assert_eq!(a.number_arrivals(10),  1);
         assert_eq!(a.number_arrivals(11),  2);
         assert_eq!(a.number_arrivals(12),  2);
@@ -86,7 +86,7 @@ mod tests {
         let a = arrivals::CurvePrefix::from_trace(trace.iter(), 10);
         assert_eq!(a.number_arrivals(0),  0);
         assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);        
+        assert_eq!(a.number_arrivals(8),  1);
         assert_eq!(a.number_arrivals(10),  1);
         assert_eq!(a.number_arrivals(11),  2);
         assert_eq!(a.number_arrivals(12),  2);
@@ -120,7 +120,7 @@ mod tests {
 
         let p2 = arrivals::CurvePrefix::from(arrivals::Sporadic::from(p));
         let steps2: Vec<_> = p2.steps_iter().take(5).collect();
-        assert_eq!(steps2, [1, 11, 21, 31, 41]);        
+        assert_eq!(steps2, [1, 11, 21, 31, 41]);
     }
 
     #[test]
@@ -314,6 +314,61 @@ mod tests {
     }
 
     #[test]
+    fn constrained_supply_equiv() {
+        let cr = supply::Constrained{period: 5, budget: 3, deadline: 5};
+        let r = supply::Periodic{period: 5, budget: 3};
+
+        for delta in 1..1000 {
+            assert_eq!(cr.provided_service(delta), r.provided_service(delta));
+        }
+
+        for cost in 1..1000 {
+            let service_time = cr.service_time(cost);
+            let blackout_interference = service_time - cr.provided_service(service_time);
+            assert_eq!(blackout_interference + cost, service_time);
+        }
+    }
+
+    #[test]
+    fn constrained_supply() {
+        let cr = supply::Constrained{period: 11, budget: 2, deadline: 5};
+
+        assert_eq!(cr.provided_service(0), 0);
+        assert_eq!(cr.provided_service(1), 0);
+        assert_eq!(cr.provided_service(2), 0);
+        assert_eq!(cr.provided_service(3), 0);
+        assert_eq!(cr.provided_service(4), 0);
+        assert_eq!(cr.provided_service(5), 0);
+        assert_eq!(cr.provided_service(6), 0);
+        assert_eq!(cr.provided_service(7), 0);
+        assert_eq!(cr.provided_service(8), 0);
+        assert_eq!(cr.provided_service(9), 0);
+        assert_eq!(cr.provided_service(10), 0);
+        assert_eq!(cr.provided_service(11), 0);
+        assert_eq!(cr.provided_service(12), 0);
+        assert_eq!(cr.provided_service(13), 1);
+        assert_eq!(cr.provided_service(14), 2);
+        assert_eq!(cr.provided_service(15), 2);
+        assert_eq!(cr.provided_service(17), 2);
+        assert_eq!(cr.provided_service(18), 2);
+        assert_eq!(cr.provided_service(19), 2);
+        assert_eq!(cr.provided_service(20), 2);
+        assert_eq!(cr.provided_service(21), 2);
+        assert_eq!(cr.provided_service(22), 2);
+        assert_eq!(cr.provided_service(23), 2);
+        assert_eq!(cr.provided_service(24), 3);
+        assert_eq!(cr.provided_service(25), 4);
+        assert_eq!(cr.provided_service(26), 4);
+
+        for cost in 1..1000 {
+            dbg!(cost);
+            let service_time = cr.service_time(cost);
+            let blackout_interference = service_time - cr.provided_service(service_time);
+            assert_eq!(blackout_interference + cost, service_time);
+        }
+    }
+
+    #[test]
     fn cost_models() {
         let wcet: Duration = 10;
 
@@ -321,7 +376,7 @@ mod tests {
         assert_eq!(wcet.cost_of_jobs(3),   30);
         assert_eq!(wcet.cost_of_jobs(10), 100);
         let jobs1: Vec<_> = wcet.job_cost_iter().take(5).collect();
-        assert_eq!(jobs1, [10, 10, 10, 10, 10]);        
+        assert_eq!(jobs1, [10, 10, 10, 10, 10]);
 
         let multi_frame: Vec<Duration> = vec![3, 2, 1];
         assert_eq!(multi_frame.cost_of_jobs(0), 0);
@@ -332,7 +387,7 @@ mod tests {
         assert_eq!(multi_frame.cost_of_jobs(5), 11);
         assert_eq!(multi_frame.cost_of_jobs(6), 12);
         let jobs2: Vec<_> = multi_frame.job_cost_iter().take(5).collect();
-        assert_eq!(jobs2, [3, 2, 1, 3, 2]);        
+        assert_eq!(jobs2, [3, 2, 1, 3, 2]);
 
         let trace = vec![1, 1, 3, 1, 2, 2, 1, 3, 1, 0, 0, 3, 2, 0, 1, 1];
         let cf = demand::CostFunction::from_trace(trace.iter(), 3);
