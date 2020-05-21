@@ -323,6 +323,26 @@ mod tests {
             let blackout_interference = service_time - r.provided_service(service_time);
             assert_eq!(blackout_interference + cost, service_time);
         }
+
+        for x in 1..1000 {
+            let st = r.service_time(x);
+            assert_eq!(r.provided_service(st), x);
+            assert!(r.provided_service(st - 1) < x);
+        }
+    }
+
+    #[test]
+    fn periodic_supply2() {
+        for period in 2..112 {
+            for budget in 1..=period {
+                let cr = supply::Periodic{period, budget};
+                    for x in 1..1000 {
+                        let st = cr.service_time(x);
+                        assert_eq!(cr.provided_service(st), x);
+                        assert!(cr.provided_service(st - 1) < x);
+                    }
+            }
+        }
     }
 
     #[test]
@@ -335,9 +355,7 @@ mod tests {
         }
 
         for cost in 1..1000 {
-            let service_time = cr.service_time(cost);
-            let blackout_interference = service_time - cr.provided_service(service_time);
-            assert_eq!(blackout_interference + cost, service_time);
+            assert_eq!(cr.service_time(cost), r.service_time(cost));
         }
     }
 
@@ -373,10 +391,55 @@ mod tests {
         assert_eq!(cr.provided_service(26), 4);
 
         for cost in 1..1000 {
-            dbg!(cost);
             let service_time = cr.service_time(cost);
             let blackout_interference = service_time - cr.provided_service(service_time);
             assert_eq!(blackout_interference + cost, service_time);
+        }
+    }
+
+    #[test]
+    fn constrained_supply2() {
+        let cr = supply::Constrained{period: 100, budget: 7, deadline: 10};
+
+        assert_eq!(cr.provided_service(93), 0);
+        assert_eq!(cr.provided_service(94), 0);
+        assert_eq!(cr.provided_service(95), 0);
+        assert_eq!(cr.provided_service(96), 0);
+        assert_eq!(cr.provided_service(97), 1);
+        assert_eq!(cr.provided_service(98), 2);
+        assert_eq!(cr.provided_service(99), 3);
+        assert_eq!(cr.provided_service(100), 4);
+        assert_eq!(cr.provided_service(101), 5);
+        assert_eq!(cr.provided_service(102), 6);
+        assert_eq!(cr.provided_service(103), 7);
+        assert_eq!(cr.provided_service(104), 7);
+
+        for x in 1..1000 {
+            let st = cr.service_time(x);
+            assert_eq!(cr.provided_service(st), x);
+            assert!(cr.provided_service(st - 1) < x);
+        }
+
+        for cost in 1..1000 {
+            let service_time = cr.service_time(cost);
+            let blackout_interference = service_time - cr.provided_service(service_time);
+            assert_eq!(blackout_interference + cost, service_time);
+       }
+    }
+
+    #[test]
+    fn constrained_supply3() {
+        for period in 2..112 {
+            for deadline in 1..=period {
+                for budget in 1..=deadline {
+                    let cr = supply::Constrained{period, budget, deadline};
+                        for x in 1..1000 {
+                            let st = cr.service_time(x);
+                            assert_eq!(cr.provided_service(st), x);
+                            assert!(cr.provided_service(st - 1) < x);
+                        }
+                }
+            }
         }
     }
 

@@ -83,7 +83,7 @@ impl JobCostModel for CostFunction {
         } else {
             0
         }
-    }    
+    }
 }
 
 impl CostFunction {
@@ -133,8 +133,8 @@ impl CostFunction {
     pub fn extrapolate(&mut self, n: usize) {
         // We need at least three samples to extrapolate, so let's do nothing if we have fewer.
         if self.wcet_of_n_jobs.len() >= 3 {
-            while dbg!(self.wcet_of_n_jobs.len()) < n - 1 {
-                self.wcet_of_n_jobs.push(dbg!(self.extrapolate_next()))
+            while self.wcet_of_n_jobs.len() < n - 1 {
+                self.wcet_of_n_jobs.push(self.extrapolate_next())
             }
         }
     }
