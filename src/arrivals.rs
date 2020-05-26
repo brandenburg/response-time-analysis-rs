@@ -190,6 +190,15 @@ impl CurvePrefix {
         }
     }
 
+    pub fn extrapolate_steps(&mut self, n: usize) {
+        // we cannot meaningfully extrapolate degenerate cases, so let's skip those
+        if self.min_distance.len() >= 2 {
+            while self.jobs_in_largest_known_distance() < n {
+                self.min_distance.push(self.extrapolate_next())
+            }
+        }
+    }
+
     fn min_job_separation(&self) -> Duration {
         // minimum separation of two jobs given by first element
         self.min_distance[0]
@@ -341,6 +350,37 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
         curve.number_arrivals(delta)
     }
 
+    fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        struct StepsIter<'a> {
+            dist: Instant,
+            curve: &'a ExtrapolatingCurvePrefix,
+            njobs: usize,
+        }
+
+        impl<'a> StepsIter<'a> {
+            fn advance(&mut self) {
+                let mut curve = self.curve.prefix.borrow_mut();
+                while curve.min_distance(self.njobs) <= self.dist {
+                    curve.extrapolate_steps(self.njobs + 1);
+                    self.njobs += 1
+                }
+                self.dist = curve.min_distance(self.njobs);
+            }
+        }
+
+        impl<'a> Iterator for StepsIter<'a> {
+            type Item = Duration;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let val = 1 + self.dist;
+                self.advance();
+                Some(val)
+            }
+        }
+
+        Box::new(StepsIter { dist: 0, curve: self, njobs: 0 })
+    }
+
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
         let mut cloned = self.prefix.borrow().clone();
 
@@ -350,7 +390,6 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
         }
         Box::new(ExtrapolatingCurvePrefix::new(cloned))
     }
-
 }
 
 

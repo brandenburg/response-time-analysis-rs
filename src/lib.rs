@@ -741,4 +741,26 @@ mod tests {
             assert_eq!(*njobs, curve.number_arrivals(delta as Duration));
         }
     }
+
+    #[test]
+    fn curve_on_demand_extrapolation() {
+        let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
+        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+
+        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+
+        let horizon = 10000;
+
+       curve.extrapolate(horizon);
+
+        for delta in 0..=horizon {
+            assert_eq!(curve.number_arrivals(delta), od_curve.number_arrivals(delta))
+        }
+
+        for (s1, s2) in curve.steps_iter()
+                             .take_while(|s1| *s1 <= horizon)
+                             .zip(od_curve.steps_iter()) {
+            assert_eq!(s1, s2)
+        }
+    }
 }
