@@ -234,6 +234,13 @@ impl CurvePrefix {
             0
         }
     }
+
+    fn jitter_shift(&mut self, jitter: Duration) {
+        for d in self.min_distance.iter_mut() {
+            // shorten minimum distance by the added jitter
+            *d = if *d > jitter { *d - jitter } else { 0 };
+       }
+    }
 }
 
 impl FromIterator<Duration> for CurvePrefix {
@@ -301,10 +308,7 @@ impl ArrivalBound for CurvePrefix {
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
         let mut ab = Box::new(self.clone());
-        for d in ab.min_distance.iter_mut() {
-            // shorten minimum distance by the added jitter
-            *d = if *d > jitter { *d - jitter } else { 0 };
-        }
+        ab.jitter_shift(jitter);
         ab
     }
 }
@@ -384,10 +388,7 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
         let mut cloned = self.prefix.borrow().clone();
 
-        for d in cloned.min_distance.iter_mut() {
-            // shorten minimum distance by the added jitter
-            *d = if *d > jitter { *d - jitter } else { 0 };
-        }
+        cloned.jitter_shift(jitter);
         Box::new(ExtrapolatingCurvePrefix::new(cloned))
     }
 }
