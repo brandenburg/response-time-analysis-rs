@@ -335,23 +335,30 @@ impl From<Sporadic> for CurvePrefix {
 }
 
 pub struct ExtrapolatingCurvePrefix {
-    prefix: RefCell<CurvePrefix>
+    prefix: RefCell<CurvePrefix>,
+    jitter: Duration,
 }
 
 impl ExtrapolatingCurvePrefix {
     pub fn new(curve: CurvePrefix) -> Self {
         ExtrapolatingCurvePrefix {
-            prefix: RefCell::new(curve)
+            prefix: RefCell::new(curve),
+            jitter: 0
         }
     }
 }
 
 impl ArrivalBound for ExtrapolatingCurvePrefix {
     fn number_arrivals(&self, delta: Duration) -> usize {
-        // extrapolate up to the requested duration
-        let mut curve = self.prefix.borrow_mut();
-        curve.extrapolate(delta + 1);
-        curve.number_arrivals(delta)
+        if delta == 0 {
+            // special case: delta=0 always yields 0
+            0
+        } else {
+            // extrapolate up to the requested duration
+            let mut curve = self.prefix.borrow_mut();
+            curve.extrapolate(self.jitter + delta + 1);
+            curve.number_arrivals(self.jitter + delta)
+        }
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -363,12 +370,12 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
 
         impl<'a> StepsIter<'a> {
             fn advance(&mut self) {
-                let mut curve = self.curve.prefix.borrow_mut();
-                while curve.min_distance(self.njobs) <= self.dist {
-                    curve.extrapolate_steps(self.njobs + 1);
+                let mut prefix = self.curve.prefix.borrow_mut();
+                while prefix.min_distance(self.njobs) <= self.dist + self.curve.jitter {
+                    prefix.extrapolate_steps(self.njobs + 1);
                     self.njobs += 1
                 }
-                self.dist = curve.min_distance(self.njobs);
+                self.dist = prefix.min_distance(self.njobs) - self.curve.jitter;
             }
         }
 
@@ -386,10 +393,10 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
-        let mut cloned = self.prefix.borrow().clone();
-
-        cloned.jitter_shift(jitter);
-        Box::new(ExtrapolatingCurvePrefix::new(cloned))
+        Box::new(ExtrapolatingCurvePrefix{
+            prefix: RefCell::new(self.prefix.borrow().clone()),
+            jitter: self.jitter + jitter,
+        })
     }
 }
 

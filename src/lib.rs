@@ -429,7 +429,7 @@ mod tests {
 
     #[test]
     fn constrained_supply3() {
-        for period in 2..112 {
+        for period in 2..29 {
             for deadline in 1..=period {
                 for budget in 1..=deadline {
                     let cr = supply::Constrained{period, budget, deadline};
@@ -743,15 +743,61 @@ mod tests {
     }
 
     #[test]
+    fn curve_on_demand_jitter() {
+        let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
+        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let horizon = 1000;
+        curve.extrapolate(horizon);
+        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+
+        let jitters: Vec<Duration> = vec![2, 5, 10, 13, 17, 19, 21, 123];
+        for j in jitters.iter() {
+            let c1 = curve.clone_with_jitter(*j);
+            let c2 = od_curve.clone_with_jitter(*j);
+
+            for delta in 0..=(horizon - j) {
+                assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
+            }
+
+            for (s1, s2) in c1.steps_iter()
+                                 .take_while(|s1| *s1 <= horizon - j)
+                                 .zip(c2.steps_iter()) {
+                assert_eq!(s1, s2)
+            }
+        }
+
+        let mut c1 = curve.clone_with_jitter(1);
+        let mut c2 = od_curve.clone_with_jitter(1);
+        let mut h = horizon - 1;
+
+        for j in jitters.iter() {
+            c1 = c1.clone_with_jitter(*j);
+            c2 = c2.clone_with_jitter(*j);
+            h -= *j;
+
+            for delta in 0..=h {
+                assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
+            }
+
+            for (s1, s2) in c1.steps_iter()
+                                 .take_while(|s1| *s1 <= h)
+                                 .zip(c2.steps_iter()) {
+                assert_eq!(s1, s2)
+            }
+        }
+
+    }
+
+    #[test]
     fn curve_on_demand_extrapolation() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
         let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
 
         let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
 
-        let horizon = 10000;
+        let horizon = 1000;
 
-       curve.extrapolate(horizon);
+        curve.extrapolate(horizon);
 
         for delta in 0..=horizon {
             assert_eq!(curve.number_arrivals(delta), od_curve.number_arrivals(delta))
@@ -763,4 +809,32 @@ mod tests {
             assert_eq!(s1, s2)
         }
     }
+
+    #[test]
+    fn curve_on_demand_extrapolation_jitter_propagation() {
+        let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
+        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+
+        let horizon = 200;
+        curve.extrapolate(horizon);
+
+        let jitters: Vec<Duration> = vec![2, 5, 10, 13, 17, 19, 21, 123];
+        for j in jitters.iter() {
+            let c1 = curve.clone_with_jitter(*j);
+            let c2 = od_curve.clone_with_jitter(*j);
+
+            for delta in 0..=(horizon - j) {
+                assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
+            }
+
+            for (s1, s2) in c1.steps_iter()
+                                 .take_while(|s1| *s1 <= horizon - j)
+                                 .zip(c2.steps_iter()) {
+                assert_eq!(s1, s2)
+            }
+
+        }
+    }
+
 }
