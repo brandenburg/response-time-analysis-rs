@@ -465,7 +465,7 @@ pub struct Propagated<T: ArrivalBound> {
     pub input_event_model: T,
 }
 
-impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
+impl<T: ArrivalBound + Clone + 'static> ArrivalBound for Propagated<T> {
     fn number_arrivals(&self, delta: Duration) -> usize {
         if delta > 0 {
             self.input_event_model
@@ -490,8 +490,7 @@ impl<T: ArrivalBound> ArrivalBound for Propagated<T> {
     fn clone_with_jitter(&self, added_jitter: Duration) -> Box<dyn ArrivalBound> {
         Box::new(Propagated {
             response_time_jitter: self.response_time_jitter + added_jitter,
-            // a bit of hack to get around liftime trouble
-            input_event_model: self.input_event_model.clone_with_jitter(0),
+            input_event_model: self.input_event_model.clone(),
         })
     }
 }
