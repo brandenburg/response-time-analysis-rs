@@ -112,11 +112,21 @@ mod tests {
         }
     }
 
+    fn brute_force_iter_check<T: ArrivalBound>(ab: &T) {
+        let si100 = ab.steps_iter().take(100);
+        let bf100 = ab.brute_force_steps_iter().take(100);
+
+        for (s1, s2) in si100.zip(bf100) {
+            assert_eq!(s1, s2)
+        }
+    }
+
     #[test]
     fn periodic_iter() {
         let p = arrivals::Periodic{ period: 10 };
         let steps: Vec<_> = p.steps_iter().take(5).collect();
         assert_eq!(steps, [1, 11, 21, 31, 41]);
+        brute_force_iter_check(&p);
 
         let p2 = arrivals::CurvePrefix::from(arrivals::Sporadic::from(p));
         let steps2: Vec<_> = p2.steps_iter().take(5).collect();
@@ -198,6 +208,11 @@ mod tests {
         let s4 = arrivals::CurvePrefix::from(s2);
         let steps4: Vec<_> = s4.steps_iter().take(6).collect();
         assert_eq!(steps4, [1, 5, 15, 25, 35, 45]);
+
+        brute_force_iter_check(&s1);
+        brute_force_iter_check(&s2);
+        brute_force_iter_check(&s3);
+        brute_force_iter_check(&s4);
     }
 
     #[test]
@@ -235,6 +250,8 @@ mod tests {
         for (x, y) in s.steps_iter().zip(prop.steps_iter().take(100)) {
             assert_eq!(x, y);
         }
+        brute_force_iter_check(&p);
+        brute_force_iter_check(&s);
     }
 
     #[test]
@@ -266,12 +283,15 @@ mod tests {
 
         let steps: Vec<Duration> = ab.steps_iter().take_while(|x| *x < 17).collect();
         assert_eq!(steps, vec![1, 4, 6, 7, 10, 11, 13, 16]);
+        brute_force_iter_check(ab);
 
         let a = &ab[0..1];
         assert_eq!(a.number_arrivals(10), 4);
+        brute_force_iter_check(&a);
 
         let boxed = Box::new(agg);
         assert_eq!(boxed.number_arrivals(16), 10);
+        brute_force_iter_check(&boxed);
 
         let a_boxed = &boxed[0..1];
         assert_eq!(a_boxed.number_arrivals(10), 4);
@@ -743,6 +763,15 @@ mod tests {
     }
 
     #[test]
+    fn curve_jitter_steps() {
+        let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
+        let curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let curve_with_jitter = curve.clone_with_jitter(2);
+        brute_force_iter_check(&curve);
+        brute_force_iter_check(&curve_with_jitter);
+    }
+
+    #[test]
     fn curve_on_demand_jitter() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
         let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
@@ -808,6 +837,9 @@ mod tests {
                              .zip(od_curve.steps_iter()) {
             assert_eq!(s1, s2)
         }
+
+        brute_force_iter_check(&curve);
+        brute_force_iter_check(&od_curve);
     }
 
     #[test]
@@ -834,6 +866,8 @@ mod tests {
                 assert_eq!(s1, s2)
             }
 
+            brute_force_iter_check(&c1);
+            brute_force_iter_check(&c2);
         }
     }
 

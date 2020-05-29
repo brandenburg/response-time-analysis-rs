@@ -15,10 +15,15 @@ pub trait ArrivalBound {
     // The sequence of interval lengths for which the arrival bound "steps", i.e.,
     // where it shows an increase.
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        self.brute_force_steps_iter()
+    }
+
+    fn brute_force_steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        let (a1, a2) = (0..).map(move |delta| (delta, self.number_arrivals(delta))).tee();
         Box::new(
-            (1..).filter(move |delta| {
-                self.number_arrivals(*delta) > self.number_arrivals(*delta - 1)
-            }),
+            a1.zip(a2.skip(1))
+                .filter(|((_, njobs1), (_, njobs2))| njobs1 < njobs2)
+                .map(|((_, _), (d2, _))| d2)
         )
     }
 
