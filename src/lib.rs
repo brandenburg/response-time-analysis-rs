@@ -871,4 +871,35 @@ mod tests {
         }
     }
 
+
+    #[test]
+    fn curve_on_demand_extrapolation_jitter_propagation_single() {
+        let dmin: Vec<Duration> = vec![10];
+        let periodic  = arrivals::Periodic{ period: dmin[0] };
+        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let od_curve  = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+
+        let horizon = 200;
+        curve.extrapolate(horizon);
+
+        let jitters: Vec<Duration> = vec![2, 5, 10, 13, 17, 19, 21, 123];
+        for j in jitters.iter() {
+            let c1 = curve.clone_with_jitter(*j);
+            let c2 = od_curve.clone_with_jitter(*j);
+            let c3 = periodic.clone_with_jitter(*j);
+
+            for delta in 0..=(horizon - j) {
+                assert_eq!(c1.number_arrivals(delta), c3.number_arrivals(delta));
+                assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta));
+            }
+
+            for (s1, s2) in c1.steps_iter()
+                                 .take_while(|s1| *s1 <= horizon - j)
+                                 .zip(c2.steps_iter()) {
+                assert_eq!(s1, s2)
+            }
+
+        }
+    }
+
 }

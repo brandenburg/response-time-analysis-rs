@@ -187,9 +187,13 @@ impl CurvePrefix {
             .unwrap()
     }
 
-    pub fn extrapolate(&mut self, horizon: Duration) {
+    pub fn can_extrapolate(&self) -> bool {
         // we cannot meaningfully extrapolate degenerate cases, so let's skip those
-        if self.min_distance.len() >= 2 {
+        self.min_distance.len() >= 2
+    }
+
+    pub fn extrapolate(&mut self, horizon: Duration) {
+        if self.can_extrapolate() {
             while self.largest_known_distance() < horizon {
                 self.min_distance.push(self.extrapolate_next())
             }
@@ -197,8 +201,7 @@ impl CurvePrefix {
     }
 
     pub fn extrapolate_steps(&mut self, n: usize) {
-        // we cannot meaningfully extrapolate degenerate cases, so let's skip those
-        if self.min_distance.len() >= 2 {
+        if self.can_extrapolate() {
             while self.jobs_in_largest_known_distance() < n {
                 self.min_distance.push(self.extrapolate_next())
             }
@@ -383,7 +386,16 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
             }
         }
 
-        Box::new(StepsIter { dist: 0, curve: self, njobs: 0 })
+        let prefix = self.prefix.borrow();
+        if prefix.can_extrapolate() {
+            Box::new(StepsIter { dist: 0, curve: self, njobs: 0 })
+        } else {
+            // degenerate case --- don't have info to extrapolate,
+            // so just return the periodic process implied by the single-value
+            // dmin function
+            let period = prefix.min_distance(2);
+            Box::new((0..).map(move |j| j * period + 1))
+        }
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
