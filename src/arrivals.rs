@@ -240,13 +240,6 @@ impl CurvePrefix {
             0
         }
     }
-
-    fn jitter_shift(&mut self, jitter: Duration) {
-        for d in self.min_distance.iter_mut() {
-            // shorten minimum distance by the added jitter
-            *d = if *d > jitter { *d - jitter } else { 0 };
-       }
-    }
 }
 
 impl FromIterator<Duration> for CurvePrefix {
@@ -313,9 +306,7 @@ impl ArrivalBound for CurvePrefix {
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
-        let mut ab = Box::new(self.clone());
-        ab.jitter_shift(jitter);
-        ab
+        Box::new(Propagated::with_jitter(self, jitter))
     }
 }
 
