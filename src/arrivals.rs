@@ -458,16 +458,19 @@ impl ArrivalBound for ApproximatedPoisson {
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
-        Box::new(Propagated {
-            response_time_jitter: jitter,
-            input_event_model: self.clone(),
-        })
+        Box::new(Propagated::with_jitter(self, jitter))
     }
 }
 
 pub struct Propagated<T: ArrivalBound> {
     pub response_time_jitter: Duration,
     pub input_event_model: T,
+}
+
+impl<T: ArrivalBound + Clone> Propagated<T>  {
+    pub fn with_jitter(event_model: &T, response_time_jitter: Duration) -> Self {
+        Propagated { input_event_model: event_model.clone(), response_time_jitter }
+    }
 }
 
 impl<T: ArrivalBound + Clone + 'static> ArrivalBound for Propagated<T> {
@@ -486,7 +489,7 @@ impl<T: ArrivalBound + Clone + 'static> ArrivalBound for Propagated<T> {
                 // shift the steps of the input event model earlier by the jitter amount
                 self.input_event_model
                     .steps_iter()
-                    .filter(move |x| *x > self.response_time_jitter)
+                    .filter(move |x| *x > self.response_time_jitter + 1)
                     .map(move |x| x - self.response_time_jitter),
             ),
         )
