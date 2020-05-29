@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::rc::Rc;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
 
@@ -335,14 +336,14 @@ impl From<Sporadic> for CurvePrefix {
 }
 
 pub struct ExtrapolatingCurvePrefix {
-    prefix: RefCell<CurvePrefix>,
+    prefix: Rc<RefCell<CurvePrefix>>,
     jitter: Duration,
 }
 
 impl ExtrapolatingCurvePrefix {
     pub fn new(curve: CurvePrefix) -> Self {
         ExtrapolatingCurvePrefix {
-            prefix: RefCell::new(curve),
+            prefix: Rc::new(RefCell::new(curve)),
             jitter: 0
         }
     }
@@ -394,7 +395,7 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
         Box::new(ExtrapolatingCurvePrefix{
-            prefix: RefCell::new(self.prefix.borrow().clone()),
+            prefix: self.prefix.clone(),
             jitter: self.jitter + jitter,
         })
     }
