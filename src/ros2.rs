@@ -4,7 +4,11 @@ use crate::fixed_point;
 use crate::supply::SupplyBound;
 use crate::time::Duration;
 
-pub fn rta_event_source<SBF, RBF>(supply: &SBF, demand: &RBF, limit: Duration) -> fixed_point::SearchResult
+pub fn rta_event_source<SBF, RBF>(
+    supply: &SBF,
+    demand: &RBF,
+    limit: Duration,
+) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
@@ -194,10 +198,8 @@ where
         };
         suffix_rbf.service_needed(offset + 1)
             + prefix_rbf.service_needed_by_n_jobs(interference_interval, num_windows)
-            + interfering_demand.service_needed_by_n_jobs_per_component(
-                interference_interval,
-                1 + num_windows,
-            )
+            + interfering_demand
+                .service_needed_by_n_jobs_per_component(interference_interval, 1 + num_windows)
     };
     fixed_point::bound_response_time(supply, &suffix_rbf, rhs_bw, rhs, limit)
 }

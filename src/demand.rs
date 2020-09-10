@@ -1,10 +1,10 @@
 use crate::arrivals::ArrivalBound;
 use crate::time::Duration;
 
+use auto_impl::auto_impl;
 use itertools::Itertools;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
-use auto_impl::auto_impl;
 
 #[auto_impl(&, Box, Rc)]
 pub trait JobCostModel {
@@ -26,7 +26,11 @@ impl JobCostModel for Duration {
     }
 
     fn least_wcet(&self, n: usize) -> Duration {
-        if n > 0 { *self } else { 0 }
+        if n > 0 {
+            *self
+        } else {
+            0
+        }
     }
 
     fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -127,7 +131,10 @@ impl CostFunction {
         assert!(n >= 2);
         // Upper-bound cost of n jobs as the sum of the bounds on the costs of
         // n-k jobs and k jobs. Since we don't store n=0, this is offset by one.
-        (0..=(n / 2)).map(|k| self.wcet_of_n_jobs[k] + self.wcet_of_n_jobs[n - k - 1]).min().unwrap()
+        (0..=(n / 2))
+            .map(|k| self.wcet_of_n_jobs[k] + self.wcet_of_n_jobs[n - k - 1])
+            .min()
+            .unwrap()
     }
 
     pub fn extrapolate(&mut self, n: usize) {
@@ -192,7 +199,8 @@ impl<B: ArrivalBound, C: JobCostModel> RequestBound for RBF<B, C> {
     }
 
     fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
-        self.wcet.least_wcet(self.arrival_bound.number_arrivals(delta))
+        self.wcet
+            .least_wcet(self.arrival_bound.number_arrivals(delta))
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
@@ -216,9 +224,7 @@ impl<'a, B: ArrivalBound + 'a, C: JobCostModel + 'a> AsRef<dyn RequestBound + 'a
 
 impl<T: RequestBound> RequestBound for Vec<T> {
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.iter()
-            .map(|rbf| rbf.service_needed(delta))
-            .sum()
+        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
     }
 
     fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
@@ -229,20 +235,11 @@ impl<T: RequestBound> RequestBound for Vec<T> {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|rbf| rbf.steps_iter())
-                .kmerge()
-                .dedup(),
-        )
+        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|rbf| rbf.job_cost_iter(delta))
-                .kmerge(),
-        )
+        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
     }
 }
 
@@ -256,9 +253,7 @@ impl<T: RequestBound> AggregateRequestBound for Vec<T> {
 
 impl<T: RequestBound> RequestBound for [T] {
     fn service_needed(&self, delta: Duration) -> Duration {
-        self.iter()
-            .map(|rbf| rbf.service_needed(delta))
-            .sum()
+        self.iter().map(|rbf| rbf.service_needed(delta)).sum()
     }
 
     fn least_wcet_in_interval(&self, delta: Duration) -> Duration {
@@ -269,20 +264,11 @@ impl<T: RequestBound> RequestBound for [T] {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|rbf| rbf.steps_iter())
-                .kmerge()
-                .dedup(),
-        )
+        Box::new(self.iter().map(|rbf| rbf.steps_iter()).kmerge().dedup())
     }
 
     fn job_cost_iter<'a>(&'a self, delta: Duration) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new(
-            self.iter()
-                .map(|rbf| rbf.job_cost_iter(delta))
-                .kmerge(),
-        )
+        Box::new(self.iter().map(|rbf| rbf.job_cost_iter(delta)).kmerge())
     }
 }
 

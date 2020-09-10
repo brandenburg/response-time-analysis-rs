@@ -67,7 +67,7 @@ where
         let rhs = workload(r);
         // corner case: zero demand is trivially satisfied immediately
         if rhs == 0 {
-            return Ok(0)
+            return Ok(0);
         } else if lhs == rhs {
             return Ok(r);
         }
@@ -95,9 +95,7 @@ where
     bw
 }
 
-pub fn max_response_time(
-    rta_per_offset: impl Iterator<Item = SearchResult>,
-) -> SearchResult {
+pub fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> SearchResult {
     rta_per_offset
         .max_by(|a, b| {
             // propagate any errors values

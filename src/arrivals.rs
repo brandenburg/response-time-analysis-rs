@@ -1,7 +1,7 @@
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
+use std::rc::Rc;
 
 use itertools::Itertools;
 
@@ -19,11 +19,13 @@ pub trait ArrivalBound {
     }
 
     fn brute_force_steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        let (a1, a2) = (0..).map(move |delta| (delta, self.number_arrivals(delta))).tee();
+        let (a1, a2) = (0..)
+            .map(move |delta| (delta, self.number_arrivals(delta)))
+            .tee();
         Box::new(
             a1.zip(a2.skip(1))
                 .filter(|((_, njobs1), (_, njobs2))| njobs1 < njobs2)
-                .map(|((_, _), (d2, _))| d2)
+                .map(|((_, _), (d2, _))| d2),
         )
     }
 
@@ -39,14 +41,13 @@ struct DeltaMinIterator<'a, AB: ArrivalBound> {
 }
 
 impl<'a, AB: ArrivalBound> DeltaMinIterator<'a, AB> {
-
     fn new(ab: &'a AB) -> Self {
-        DeltaMinIterator{
+        DeltaMinIterator {
             ab,
             steps: ab.steps_iter(),
             next_step: None,
             next_count: 2,
-            step_count: 0
+            step_count: 0,
         }
     }
 
@@ -77,19 +78,21 @@ impl<'a, AB: ArrivalBound> Iterator for DeltaMinIterator<'a, AB> {
     }
 }
 
-pub fn nonzero_delta_min_iter<'a>(ab: &'a impl ArrivalBound) -> impl Iterator<Item = (usize, Duration)> + 'a {
+pub fn nonzero_delta_min_iter<'a>(
+    ab: &'a impl ArrivalBound,
+) -> impl Iterator<Item = (usize, Duration)> + 'a {
     // don't both bother with the two default cases (zero and one jobs)
     DeltaMinIterator::new(ab)
 }
 
-
-pub fn delta_min_iter<'a>(ab: &'a impl ArrivalBound) -> impl Iterator<Item = (usize, Duration)> + 'a {
+pub fn delta_min_iter<'a>(
+    ab: &'a impl ArrivalBound,
+) -> impl Iterator<Item = (usize, Duration)> + 'a {
     // first the two default cases for zero and one jobs
     iter::once((0, 0))
         .chain(iter::once((1, 0)))
         .chain(DeltaMinIterator::new(ab))
 }
-
 
 #[derive(Copy, Clone, Debug)]
 pub struct Periodic {
@@ -129,7 +132,7 @@ impl ArrivalBound for Never {
     }
 
     fn clone_with_jitter(&self, _jitter: Duration) -> Box<dyn ArrivalBound> {
-        Box::new(Never{})
+        Box::new(Never {})
     }
 }
 
@@ -402,7 +405,9 @@ pub struct ExtrapolatingCurvePrefix {
 
 impl ExtrapolatingCurvePrefix {
     pub fn new(curve: CurvePrefix) -> Self {
-        ExtrapolatingCurvePrefix { prefix: Rc::new(RefCell::new(curve)) }
+        ExtrapolatingCurvePrefix {
+            prefix: Rc::new(RefCell::new(curve)),
+        }
     }
 }
 
@@ -449,7 +454,11 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
 
         let prefix = self.prefix.borrow();
         if prefix.can_extrapolate() {
-            Box::new(StepsIter { dist: 0, curve: self, njobs: 0 })
+            Box::new(StepsIter {
+                dist: 0,
+                curve: self,
+                njobs: 0,
+            })
         } else {
             // degenerate case --- don't have info to extrapolate,
             // so just return the periodic process implied by the single-value
@@ -463,7 +472,6 @@ impl ArrivalBound for ExtrapolatingCurvePrefix {
         Box::new(Propagated::with_jitter(self, jitter))
     }
 }
-
 
 #[derive(Copy, Clone, Debug)]
 pub struct Poisson {
@@ -525,9 +533,12 @@ pub struct Propagated<T: ArrivalBound> {
     pub input_event_model: T,
 }
 
-impl<T: ArrivalBound + Clone> Propagated<T>  {
+impl<T: ArrivalBound + Clone> Propagated<T> {
     pub fn with_jitter(event_model: &T, response_time_jitter: Duration) -> Self {
-        Propagated { input_event_model: event_model.clone(), response_time_jitter }
+        Propagated {
+            input_event_model: event_model.clone(),
+            response_time_jitter,
+        }
     }
 }
 

@@ -1,39 +1,39 @@
 pub mod arrivals;
-pub mod time;
-pub mod supply;
-pub mod fixed_point;
 pub mod demand;
+pub mod fixed_point;
+pub mod supply;
+pub mod time;
 
 pub mod ros2;
 
 #[cfg(test)]
 mod tests {
-    use crate::time::Duration;
     use crate::arrivals::{self, ArrivalBound};
-    use crate::supply::{self, SupplyBound};
-    use crate::demand::{self, RequestBound, JobCostModel};
+    use crate::demand::{self, JobCostModel, RequestBound};
     use crate::ros2;
+    use crate::supply::{self, SupplyBound};
+    use crate::time::Duration;
     use assert_approx_eq::assert_approx_eq;
 
     use std::iter::FromIterator;
 
     #[test]
     fn periodic_arrivals() {
-        let a = arrivals::Periodic{ period: 10 };
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);
-        assert_eq!(a.number_arrivals(10),  1);
-        assert_eq!(a.number_arrivals(11),  2);
-        assert_eq!(a.number_arrivals(12),  2);
-        assert_eq!(a.number_arrivals(13),  2);
+        let a = arrivals::Periodic { period: 10 };
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 1);
+        assert_eq!(a.number_arrivals(10), 1);
+        assert_eq!(a.number_arrivals(11), 2);
+        assert_eq!(a.number_arrivals(12), 2);
+        assert_eq!(a.number_arrivals(13), 2);
         assert_eq!(a.number_arrivals(100), 10);
         assert_eq!(a.number_arrivals(105), 11);
     }
 
     #[test]
     fn period_arrivals_dmin() {
-        let ab = arrivals::Periodic{ period: 10 };
+        let ab = arrivals::Periodic { period: 10 };
         let dmin_ref = vec![(0, 0), (1, 0), (2, 10), (3, 20), (4, 30), (5, 40)];
         let dmin = arrivals::delta_min_iter(&ab);
 
@@ -44,16 +44,16 @@ mod tests {
 
     #[test]
     fn periodic_arrivals_via_unroll_sporadic() {
-        let p = arrivals::Periodic{ period: 10 };
+        let p = arrivals::Periodic { period: 10 };
         let s = arrivals::Sporadic::from(p);
         let a = arrivals::CurvePrefix::unroll_sporadic(&s, 1000);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);
-        assert_eq!(a.number_arrivals(10),  1);
-        assert_eq!(a.number_arrivals(11),  2);
-        assert_eq!(a.number_arrivals(12),  2);
-        assert_eq!(a.number_arrivals(13),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 1);
+        assert_eq!(a.number_arrivals(10), 1);
+        assert_eq!(a.number_arrivals(11), 2);
+        assert_eq!(a.number_arrivals(12), 2);
+        assert_eq!(a.number_arrivals(13), 2);
         assert_eq!(a.number_arrivals(100), 10);
         assert_eq!(a.number_arrivals(101), 11);
         assert_eq!(a.number_arrivals(105), 11);
@@ -61,31 +61,31 @@ mod tests {
 
     #[test]
     fn periodic_arrivals_via_sporadic() {
-        let p = arrivals::Periodic{ period: 10 };
+        let p = arrivals::Periodic { period: 10 };
         let s = arrivals::Sporadic::from(p);
         let a = arrivals::CurvePrefix::from(s);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);
-        assert_eq!(a.number_arrivals(10),  1);
-        assert_eq!(a.number_arrivals(11),  2);
-        assert_eq!(a.number_arrivals(12),  2);
-        assert_eq!(a.number_arrivals(13),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 1);
+        assert_eq!(a.number_arrivals(10), 1);
+        assert_eq!(a.number_arrivals(11), 2);
+        assert_eq!(a.number_arrivals(12), 2);
+        assert_eq!(a.number_arrivals(13), 2);
         assert_eq!(a.number_arrivals(100), 10);
         assert_eq!(a.number_arrivals(101), 11);
         assert_eq!(a.number_arrivals(105), 11);
     }
     #[test]
     fn periodic_arrivals_unrolled() {
-        let p = arrivals::Periodic{ period: 10 };
+        let p = arrivals::Periodic { period: 10 };
         let a = arrivals::CurvePrefix::from(p);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);
-        assert_eq!(a.number_arrivals(10),  1);
-        assert_eq!(a.number_arrivals(11),  2);
-        assert_eq!(a.number_arrivals(12),  2);
-        assert_eq!(a.number_arrivals(13),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 1);
+        assert_eq!(a.number_arrivals(10), 1);
+        assert_eq!(a.number_arrivals(11), 2);
+        assert_eq!(a.number_arrivals(12), 2);
+        assert_eq!(a.number_arrivals(13), 2);
         assert_eq!(a.number_arrivals(100), 10);
         assert_eq!(a.number_arrivals(101), 11);
         assert_eq!(a.number_arrivals(105), 11);
@@ -95,13 +95,13 @@ mod tests {
     fn periodic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
         let a = arrivals::CurvePrefix::from_trace(trace.iter(), 10);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  1);
-        assert_eq!(a.number_arrivals(10),  1);
-        assert_eq!(a.number_arrivals(11),  2);
-        assert_eq!(a.number_arrivals(12),  2);
-        assert_eq!(a.number_arrivals(13),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 1);
+        assert_eq!(a.number_arrivals(10), 1);
+        assert_eq!(a.number_arrivals(11), 2);
+        assert_eq!(a.number_arrivals(12), 2);
+        assert_eq!(a.number_arrivals(13), 2);
         assert_eq!(a.number_arrivals(100), 10);
         assert_eq!(a.number_arrivals(101), 11);
         assert_eq!(a.number_arrivals(105), 11);
@@ -109,17 +109,17 @@ mod tests {
 
     #[test]
     fn compare_periodic_arrivals() {
-        let p = arrivals::Periodic{ period: 10 };
+        let p = arrivals::Periodic { period: 10 };
         let s = arrivals::Sporadic::from(p);
         let a = arrivals::CurvePrefix::from(p);
         let b = arrivals::CurvePrefix::from(s);
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
         let t = arrivals::CurvePrefix::from_trace(trace.iter(), 2);
         for delta in 0..1000 {
-            assert_eq!(a.number_arrivals(delta),  p.number_arrivals(delta));
-            assert_eq!(s.number_arrivals(delta),  p.number_arrivals(delta));
-            assert_eq!(a.number_arrivals(delta),  b.number_arrivals(delta));
-            assert_eq!(p.number_arrivals(delta),  t.number_arrivals(delta));
+            assert_eq!(a.number_arrivals(delta), p.number_arrivals(delta));
+            assert_eq!(s.number_arrivals(delta), p.number_arrivals(delta));
+            assert_eq!(a.number_arrivals(delta), b.number_arrivals(delta));
+            assert_eq!(p.number_arrivals(delta), t.number_arrivals(delta));
         }
     }
 
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn periodic_iter() {
-        let p = arrivals::Periodic{ period: 10 };
+        let p = arrivals::Periodic { period: 10 };
         let steps: Vec<_> = p.steps_iter().take(5).collect();
         assert_eq!(steps, [1, 11, 21, 31, 41]);
         brute_force_iter_check(&p);
@@ -146,12 +146,15 @@ mod tests {
 
     #[test]
     fn sporadic_arrivals() {
-        let a = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3 };
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  2);
-        assert_eq!(a.number_arrivals(10),  2);
-        assert_eq!(a.number_arrivals(11),  2);
+        let a = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 3,
+        };
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 2);
+        assert_eq!(a.number_arrivals(10), 2);
+        assert_eq!(a.number_arrivals(11), 2);
         assert_eq!(a.number_arrivals(100), 11);
         assert_eq!(a.number_arrivals(107), 11);
         assert_eq!(a.number_arrivals(108), 12);
@@ -162,22 +165,25 @@ mod tests {
     fn sporadic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 7, 17, 27, 37, 47, 57, 67, 77, 87, 110, 117];
         let a = arrivals::CurvePrefix::from_trace(trace.iter(), 5);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  2);
-        assert_eq!(a.number_arrivals(10),  2);
-        assert_eq!(a.number_arrivals(11),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 2);
+        assert_eq!(a.number_arrivals(10), 2);
+        assert_eq!(a.number_arrivals(11), 2);
     }
 
     #[test]
     fn sporadic_arrivals_unrolled() {
-        let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3 };
+        let s = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 3,
+        };
         let a = arrivals::CurvePrefix::from(s);
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  1);
-        assert_eq!(a.number_arrivals(8),  2);
-        assert_eq!(a.number_arrivals(10),  2);
-        assert_eq!(a.number_arrivals(11),  2);
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 1);
+        assert_eq!(a.number_arrivals(8), 2);
+        assert_eq!(a.number_arrivals(10), 2);
+        assert_eq!(a.number_arrivals(11), 2);
         assert_eq!(a.number_arrivals(100), 11);
         assert_eq!(a.number_arrivals(107), 11);
         assert_eq!(a.number_arrivals(108), 12);
@@ -186,29 +192,41 @@ mod tests {
 
     #[test]
     fn sporadic_arrivals_large_jitter() {
-        let a = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 16 };
-        assert_eq!(a.number_arrivals(0),  0);
-        assert_eq!(a.number_arrivals(1),  2);
-        assert_eq!(a.number_arrivals(4),  2);
-        assert_eq!(a.number_arrivals(5),  3);
+        let a = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 16,
+        };
+        assert_eq!(a.number_arrivals(0), 0);
+        assert_eq!(a.number_arrivals(1), 2);
+        assert_eq!(a.number_arrivals(4), 2);
+        assert_eq!(a.number_arrivals(5), 3);
     }
 
     #[test]
     fn compare_sporadic_arrivals() {
-        let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 16 };
+        let s = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 16,
+        };
         let a = arrivals::CurvePrefix::from(s);
         for delta in 0..1000 {
-            assert_eq!(a.number_arrivals(delta),  s.number_arrivals(delta));
+            assert_eq!(a.number_arrivals(delta), s.number_arrivals(delta));
         }
     }
 
     #[test]
     fn sporadic_iter() {
-        let s1 = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3 };
+        let s1 = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 3,
+        };
         let steps1: Vec<_> = s1.steps_iter().take(6).collect();
         assert_eq!(steps1, [1, 8, 18, 28, 38, 48]);
 
-        let s2 = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 16 };
+        let s2 = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 16,
+        };
         let steps2: Vec<_> = s2.steps_iter().take(6).collect();
         assert_eq!(steps2, [1, 5, 15, 25, 35, 45]);
 
@@ -228,7 +246,7 @@ mod tests {
 
     #[test]
     fn poisson() {
-        let p = arrivals::Poisson{ rate: 0.01 };
+        let p = arrivals::Poisson { rate: 0.01 };
         assert_approx_eq!(p.arrival_probability(100, 0), 0.368, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 1), 0.368, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 2), 0.184, 0.001);
@@ -244,7 +262,10 @@ mod tests {
         assert_eq!(p.number_arrivals(10), 0);
         let steps: Vec<_> = p.steps_iter().collect();
         assert_eq!(steps, []);
-        let prop = arrivals::Propagated { input_event_model: p, response_time_jitter: 3 };
+        let prop = arrivals::Propagated {
+            input_event_model: p,
+            response_time_jitter: 3,
+        };
         assert_eq!(prop.number_arrivals(10), 0);
         let steps: Vec<_> = p.steps_iter().collect();
         assert_eq!(steps, []);
@@ -254,9 +275,15 @@ mod tests {
 
     #[test]
     fn propagated_jitter() {
-        let p = arrivals::Periodic{ period: 10 };
-        let s = arrivals::Sporadic{ min_inter_arrival: 10, jitter: 3};
-        let prop = arrivals::Propagated{ input_event_model: p, response_time_jitter: 3};
+        let p = arrivals::Periodic { period: 10 };
+        let s = arrivals::Sporadic {
+            min_inter_arrival: 10,
+            jitter: 3,
+        };
+        let prop = arrivals::Propagated {
+            input_event_model: p,
+            response_time_jitter: 3,
+        };
         for t in 0..1000 {
             assert_eq!(s.number_arrivals(t), prop.number_arrivals(t));
         }
@@ -270,8 +297,11 @@ mod tests {
     #[test]
     fn aggregated_arrivals() {
         let agg: Vec<Box<dyn ArrivalBound>> = vec![
-            Box::new(arrivals::Sporadic{ min_inter_arrival: 3, jitter: 0 }),
-            Box::new(arrivals::Periodic{ period: 5 })
+            Box::new(arrivals::Sporadic {
+                min_inter_arrival: 3,
+                jitter: 0,
+            }),
+            Box::new(arrivals::Periodic { period: 5 }),
         ];
 
         let ab = &agg;
@@ -315,7 +345,10 @@ mod tests {
 
     #[test]
     fn periodic_supply() {
-        let r = supply::Periodic{period: 5, budget: 3};
+        let r = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
         assert_eq!(r.provided_service(0), 0);
         assert_eq!(r.provided_service(1), 0);
@@ -334,10 +367,10 @@ mod tests {
         assert_eq!(r.provided_service(14), 6);
         assert_eq!(r.provided_service(15), 7);
 
-        assert_eq!(r.service_time(0),  0);
-        assert_eq!(r.service_time(1),  5);
-        assert_eq!(r.service_time(2),  6);
-        assert_eq!(r.service_time(3),  7);
+        assert_eq!(r.service_time(0), 0);
+        assert_eq!(r.service_time(1), 5);
+        assert_eq!(r.service_time(2), 6);
+        assert_eq!(r.service_time(3), 7);
         assert_eq!(r.service_time(4), 10);
         assert_eq!(r.service_time(5), 11);
         assert_eq!(r.service_time(6), 12);
@@ -368,20 +401,27 @@ mod tests {
     fn periodic_supply2() {
         for period in 2..112 {
             for budget in 1..=period {
-                let cr = supply::Periodic{period, budget};
-                    for x in 1..1000 {
-                        let st = cr.service_time(x);
-                        assert_eq!(cr.provided_service(st), x);
-                        assert!(cr.provided_service(st - 1) < x);
-                    }
+                let cr = supply::Periodic { period, budget };
+                for x in 1..1000 {
+                    let st = cr.service_time(x);
+                    assert_eq!(cr.provided_service(st), x);
+                    assert!(cr.provided_service(st - 1) < x);
+                }
             }
         }
     }
 
     #[test]
     fn constrained_supply_equiv() {
-        let cr = supply::Constrained{period: 5, budget: 3, deadline: 5};
-        let r = supply::Periodic{period: 5, budget: 3};
+        let cr = supply::Constrained {
+            period: 5,
+            budget: 3,
+            deadline: 5,
+        };
+        let r = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
         for delta in 1..1000 {
             assert_eq!(cr.provided_service(delta), r.provided_service(delta));
@@ -394,7 +434,11 @@ mod tests {
 
     #[test]
     fn constrained_supply() {
-        let cr = supply::Constrained{period: 11, budget: 2, deadline: 5};
+        let cr = supply::Constrained {
+            period: 11,
+            budget: 2,
+            deadline: 5,
+        };
 
         assert_eq!(cr.provided_service(0), 0);
         assert_eq!(cr.provided_service(1), 0);
@@ -432,7 +476,11 @@ mod tests {
 
     #[test]
     fn constrained_supply2() {
-        let cr = supply::Constrained{period: 100, budget: 7, deadline: 10};
+        let cr = supply::Constrained {
+            period: 100,
+            budget: 7,
+            deadline: 10,
+        };
 
         assert_eq!(cr.provided_service(93), 0);
         assert_eq!(cr.provided_service(94), 0);
@@ -457,7 +505,7 @@ mod tests {
             let service_time = cr.service_time(cost);
             let blackout_interference = service_time - cr.provided_service(service_time);
             assert_eq!(blackout_interference + cost, service_time);
-       }
+        }
     }
 
     #[test]
@@ -465,12 +513,16 @@ mod tests {
         for period in 2..29 {
             for deadline in 1..=period {
                 for budget in 1..=deadline {
-                    let cr = supply::Constrained{period, budget, deadline};
-                        for x in 1..1000 {
-                            let st = cr.service_time(x);
-                            assert_eq!(cr.provided_service(st), x);
-                            assert!(cr.provided_service(st - 1) < x);
-                        }
+                    let cr = supply::Constrained {
+                        period,
+                        budget,
+                        deadline,
+                    };
+                    for x in 1..1000 {
+                        let st = cr.service_time(x);
+                        assert_eq!(cr.provided_service(st), x);
+                        assert!(cr.provided_service(st - 1) < x);
+                    }
                 }
             }
         }
@@ -480,8 +532,8 @@ mod tests {
     fn cost_models() {
         let wcet: Duration = 10;
 
-        assert_eq!(wcet.cost_of_jobs(0),    0);
-        assert_eq!(wcet.cost_of_jobs(3),   30);
+        assert_eq!(wcet.cost_of_jobs(0), 0);
+        assert_eq!(wcet.cost_of_jobs(3), 30);
         assert_eq!(wcet.cost_of_jobs(10), 100);
         let jobs1: Vec<_> = wcet.job_cost_iter().take(5).collect();
         assert_eq!(jobs1, [10, 10, 10, 10, 10]);
@@ -533,11 +585,17 @@ mod tests {
 
     #[test]
     fn ros2_event_source() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
-        let rbf = demand::RBF{
+        let rbf = demand::RBF {
             wcet: 2,
-            arrival_bound: arrivals::Sporadic{ jitter: 2, min_inter_arrival: 5 }
+            arrival_bound: arrivals::Sporadic {
+                jitter: 2,
+                min_inter_arrival: 5,
+            },
         };
 
         let result = ros2::rta_event_source(&sbf, &rbf, 100);
@@ -548,11 +606,14 @@ mod tests {
 
     #[test]
     fn ros2_never() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
-        let rbf = demand::RBF{
+        let rbf = demand::RBF {
             wcet: 2,
-            arrival_bound: arrivals::Never{}
+            arrival_bound: arrivals::Never {},
         };
 
         let result = ros2::rta_event_source(&sbf, &rbf, 100);
@@ -562,23 +623,31 @@ mod tests {
 
     #[test]
     fn ros2_timer_periodic() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
         // use RBF with boxed parameters, just because we can
-        let rbf = demand::RBF{
+        let rbf = demand::RBF {
             wcet: Box::new(1),
-            arrival_bound: Box::new(arrivals::Periodic{period: 10})
+            arrival_bound: Box::new(arrivals::Periodic { period: 10 }),
         };
 
         let interference = vec![
-            demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
-            demand::RBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
+            demand::RBF {
+                wcet: 1,
+                arrival_bound: arrivals::Periodic { period: 10 },
+            },
+            demand::RBF {
+                wcet: 3,
+                arrival_bound: arrivals::Periodic { period: 20 },
+            },
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 12);
-
 
         let result2 = ros2::rta_timer(&sbf, &rbf, &interference, 4, 100);
         assert!(result2.is_ok());
@@ -587,16 +656,28 @@ mod tests {
 
     #[test]
     fn ros2_timer_sporadic() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
-        let rbf = demand::RBF{
+        let rbf = demand::RBF {
             wcet: 1,
-            arrival_bound: arrivals::Periodic{period: 10}
+            arrival_bound: arrivals::Periodic { period: 10 },
         };
 
         let interference: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}}),
-            Box::new(demand::RBF{wcet: 3, arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 10}}),
+            Box::new(demand::RBF {
+                wcet: 1,
+                arrival_bound: arrivals::Periodic { period: 10 },
+            }),
+            Box::new(demand::RBF {
+                wcet: 3,
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 10,
+                },
+            }),
         ];
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference[0..2], 0, 100);
@@ -606,16 +687,25 @@ mod tests {
 
     #[test]
     fn ros2_pp_callback() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
-        let rbf = demand::RBF{
+        let rbf = demand::RBF {
             wcet: 1,
-            arrival_bound: arrivals::Periodic{period: 10}
+            arrival_bound: arrivals::Periodic { period: 10 },
         };
 
         let interference = vec![
-            demand::RBF{wcet: 1, arrival_bound: arrivals::Periodic{period: 10}},
-            demand::RBF{wcet: 3, arrival_bound: arrivals::Periodic{period: 20}},
+            demand::RBF {
+                wcet: 1,
+                arrival_bound: arrivals::Periodic { period: 10 },
+            },
+            demand::RBF {
+                wcet: 3,
+                arrival_bound: arrivals::Periodic { period: 20 },
+            },
         ];
 
         let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
@@ -626,7 +716,10 @@ mod tests {
     #[test]
     fn ros2_chain() {
         // Box the supply just to check that it's possible
-        let sbf: Box<dyn SupplyBound> = Box::new(supply::Periodic{period: 5, budget: 3});
+        let sbf: Box<dyn SupplyBound> = Box::new(supply::Periodic {
+            period: 5,
+            budget: 3,
+        });
 
         let chain1_wcet = vec![1, 2, 3];
         let chain2_wcet = vec![1, 1, 1];
@@ -637,17 +730,23 @@ mod tests {
         let total3: Duration = chain3_wcet.iter().sum();
 
         let all_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total1,
-                arrival_bound: arrivals::Periodic{period: 25}
+                arrival_bound: arrivals::Periodic { period: 25 },
             }),
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total2,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total3,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
         ];
 
@@ -660,7 +759,10 @@ mod tests {
 
     #[test]
     fn ros2_chain2() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
         let chain1_wcet = vec![1, 2, 3];
         let chain2_wcet = vec![1, 1, 1];
@@ -670,35 +772,45 @@ mod tests {
         let total2: Duration = chain2_wcet.iter().sum();
         let total3: Duration = chain3_wcet.iter().sum();
 
-        let chain1_prefix = demand::RBF{
-                wcet: prefix1,
-                arrival_bound: arrivals::Periodic{period: 25}
+        let chain1_prefix = demand::RBF {
+            wcet: prefix1,
+            arrival_bound: arrivals::Periodic { period: 25 },
         };
 
-        let chain1_suffix = demand::RBF{
-                wcet: chain1_wcet[2],
-                arrival_bound: arrivals::Periodic{period: 25}
+        let chain1_suffix = demand::RBF {
+            wcet: chain1_wcet[2],
+            arrival_bound: arrivals::Periodic { period: 25 },
         };
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total2,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total3,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
         ];
 
-        let result = ros2::rta_processing_chain2(&sbf, &chain1_prefix, &chain1_suffix, &other_chains, 1000);
+        let result =
+            ros2::rta_processing_chain2(&sbf, &chain1_prefix, &chain1_suffix, &other_chains, 1000);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 72);
     }
 
     #[test]
     fn ros2_chain3() {
-        let sbf = supply::Periodic{period: 5, budget: 3};
+        let sbf = supply::Periodic {
+            period: 5,
+            budget: 3,
+        };
 
         let chain1_wcet: Vec<Duration> = vec![1, 2, 3];
         let chain2_wcet = vec![1, 1, 1];
@@ -707,16 +819,22 @@ mod tests {
         let total2: Duration = chain2_wcet.iter().sum();
         let total3: Duration = chain3_wcet.iter().sum();
 
-        let chain1_arrivals = arrivals::Periodic{period: 25};
+        let chain1_arrivals = arrivals::Periodic { period: 25 };
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total2,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
-            Box::new(demand::RBF{
+            Box::new(demand::RBF {
                 wcet: total3,
-                arrival_bound: arrivals::Sporadic{min_inter_arrival: 20, jitter: 25}
+                arrival_bound: arrivals::Sporadic {
+                    min_inter_arrival: 20,
+                    jitter: 25,
+                },
             }),
         ];
 
@@ -775,7 +893,10 @@ mod tests {
             assert_eq!(*njobs, curve.number_arrivals(delta as Duration));
         }
 
-        for (should, is) in (0..).zip(dmin_ref.iter().copied()).zip(arrivals::delta_min_iter(&curve)) {
+        for (should, is) in (0..)
+            .zip(dmin_ref.iter().copied())
+            .zip(arrivals::delta_min_iter(&curve))
+        {
             assert_eq!(should, is);
         }
     }
@@ -806,9 +927,11 @@ mod tests {
                 assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
             }
 
-            for (s1, s2) in c1.steps_iter()
-                                 .take_while(|s1| *s1 <= horizon - j)
-                                 .zip(c2.steps_iter()) {
+            for (s1, s2) in c1
+                .steps_iter()
+                .take_while(|s1| *s1 <= horizon - j)
+                .zip(c2.steps_iter())
+            {
                 assert_eq!(s1, s2)
             }
         }
@@ -826,13 +949,14 @@ mod tests {
                 assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
             }
 
-            for (s1, s2) in c1.steps_iter()
-                                 .take_while(|s1| *s1 <= h)
-                                 .zip(c2.steps_iter()) {
+            for (s1, s2) in c1
+                .steps_iter()
+                .take_while(|s1| *s1 <= h)
+                .zip(c2.steps_iter())
+            {
                 assert_eq!(s1, s2)
             }
         }
-
     }
 
     #[test]
@@ -847,12 +971,17 @@ mod tests {
         curve.extrapolate(horizon);
 
         for delta in 0..=horizon {
-            assert_eq!(curve.number_arrivals(delta), od_curve.number_arrivals(delta))
+            assert_eq!(
+                curve.number_arrivals(delta),
+                od_curve.number_arrivals(delta)
+            )
         }
 
-        for (s1, s2) in curve.steps_iter()
-                             .take_while(|s1| *s1 <= horizon)
-                             .zip(od_curve.steps_iter()) {
+        for (s1, s2) in curve
+            .steps_iter()
+            .take_while(|s1| *s1 <= horizon)
+            .zip(od_curve.steps_iter())
+        {
             assert_eq!(s1, s2)
         }
 
@@ -878,9 +1007,11 @@ mod tests {
                 assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta))
             }
 
-            for (s1, s2) in c1.steps_iter()
-                                 .take_while(|s1| *s1 <= horizon - j)
-                                 .zip(c2.steps_iter()) {
+            for (s1, s2) in c1
+                .steps_iter()
+                .take_while(|s1| *s1 <= horizon - j)
+                .zip(c2.steps_iter())
+            {
                 assert_eq!(s1, s2)
             }
 
@@ -889,13 +1020,12 @@ mod tests {
         }
     }
 
-
     #[test]
     fn curve_on_demand_extrapolation_jitter_propagation_single() {
         let dmin: Vec<Duration> = vec![10];
-        let periodic  = arrivals::Periodic{ period: dmin[0] };
+        let periodic = arrivals::Periodic { period: dmin[0] };
         let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
-        let od_curve  = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
 
         let horizon = 200;
         curve.extrapolate(horizon);
@@ -911,13 +1041,13 @@ mod tests {
                 assert_eq!(c1.number_arrivals(delta), c2.number_arrivals(delta));
             }
 
-            for (s1, s2) in c1.steps_iter()
-                                 .take_while(|s1| *s1 <= horizon - j)
-                                 .zip(c2.steps_iter()) {
+            for (s1, s2) in c1
+                .steps_iter()
+                .take_while(|s1| *s1 <= horizon - j)
+                .zip(c2.steps_iter())
+            {
                 assert_eq!(s1, s2)
             }
-
         }
     }
-
 }
