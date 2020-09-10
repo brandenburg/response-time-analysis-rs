@@ -89,7 +89,7 @@ where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
 {
-    // right-hand side of Lemma 3
+    // right-hand side of Lemma 8
     let rhs = |response| {
         if response > last_callback_wcet {
             all_chains.service_needed(response - last_callback_wcet + 1)

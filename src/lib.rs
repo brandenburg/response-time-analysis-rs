@@ -32,6 +32,17 @@ mod tests {
     }
 
     #[test]
+    fn period_arrivals_dmin() {
+        let ab = arrivals::Periodic{ period: 10 };
+        let dmin_ref = vec![(0, 0), (1, 0), (2, 10), (3, 20), (4, 30), (5, 40)];
+        let dmin = arrivals::delta_min_iter(&ab);
+
+        for (should, is) in dmin_ref.iter().zip(dmin) {
+            assert_eq!(*should, is);
+        }
+    }
+
+    #[test]
     fn periodic_arrivals_via_unroll_sporadic() {
         let p = arrivals::Periodic{ period: 10 };
         let s = arrivals::Sporadic::from(p);
@@ -231,12 +242,14 @@ mod tests {
     fn never_arrives() {
         let p = arrivals::Never {};
         assert_eq!(p.number_arrivals(10), 0);
-        let steps : Vec<_> = p.steps_iter().collect();
+        let steps: Vec<_> = p.steps_iter().collect();
         assert_eq!(steps, []);
         let prop = arrivals::Propagated { input_event_model: p, response_time_jitter: 3 };
         assert_eq!(prop.number_arrivals(10), 0);
-        let steps : Vec<_> = p.steps_iter().collect();
-        assert_eq!(steps, [])
+        let steps: Vec<_> = p.steps_iter().collect();
+        assert_eq!(steps, []);
+        let dmin: Vec<_> = arrivals::nonzero_delta_min_iter(&p).collect();
+        assert_eq!(dmin, []);
     }
 
     #[test]
@@ -718,6 +731,7 @@ mod tests {
         // dbg!(result);
         // assert_eq!(result.unwrap(), 72);
     }
+
     #[test]
     fn curve_extrapolation() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
@@ -759,6 +773,10 @@ mod tests {
 
         for (delta, njobs) in ab_ref.iter().enumerate() {
             assert_eq!(*njobs, curve.number_arrivals(delta as Duration));
+        }
+
+        for (should, is) in (0..).zip(dmin_ref.iter().copied()).zip(arrivals::delta_min_iter(&curve)) {
+            assert_eq!(should, is);
         }
     }
 
