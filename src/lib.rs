@@ -799,8 +799,10 @@ mod tests {
             }),
         ];
 
-        let result =
-            ros2::rta_processing_chain2(&sbf, &chain1_prefix, &chain1_suffix, &other_chains, 1000);
+        let all_other_callbacks: Vec<Box<dyn RequestBound>> =
+            vec![Box::new(other_chains), Box::new(chain1_prefix)];
+
+        let result = ros2::rta_processing_chain2(&sbf, &chain1_suffix, &all_other_callbacks, 1000);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 72);
     }

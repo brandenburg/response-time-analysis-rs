@@ -104,24 +104,20 @@ where
     fixed_point::fixed_point_search(supply, limit, rhs)
 }
 
-pub fn rta_processing_chain2<SBF, RBF1, RBF2, RBF3>(
+pub fn rta_processing_chain2<SBF, RBF1, RBF2>(
     supply: &SBF,
-    chain_prefix: &RBF1,
-    chain_last_callback: &RBF2,
-    interfering_demand: &RBF3,
+    chain_last_callback: &RBF1,
+    all_other_callbacks: &RBF2,
     limit: Duration,
 ) -> fixed_point::SearchResult
 where
     SBF: SupplyBound + ?Sized,
     RBF1: RequestBound + ?Sized,
     RBF2: RequestBound + ?Sized,
-    RBF3: RequestBound + ?Sized,
 {
     // busy-window ends when all chains are quiet
     let rhs_bw = |delta| {
-        chain_prefix.service_needed(delta)
-            + chain_last_callback.service_needed(delta)
-            + interfering_demand.service_needed(delta)
+        chain_last_callback.service_needed(delta) + all_other_callbacks.service_needed(delta)
     };
     // right-hand side of recurrence for chain analysis
     let rhs = |offset, response| {
@@ -134,8 +130,7 @@ where
             offset + 1
         };
         chain_last_callback.service_needed(offset + 1)
-            + chain_prefix.service_needed(interference_interval)
-            + interfering_demand.service_needed(interference_interval)
+            + all_other_callbacks.service_needed(interference_interval)
     };
     fixed_point::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
 }
