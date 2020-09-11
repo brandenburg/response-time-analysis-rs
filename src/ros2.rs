@@ -104,37 +104,6 @@ where
     fixed_point::fixed_point_search(supply, limit, rhs)
 }
 
-pub fn rta_processing_chain2<SBF, RBF1, RBF2>(
-    supply: &SBF,
-    chain_last_callback: &RBF1,
-    all_other_callbacks: &RBF2,
-    limit: Duration,
-) -> fixed_point::SearchResult
-where
-    SBF: SupplyBound + ?Sized,
-    RBF1: RequestBound + ?Sized,
-    RBF2: RequestBound + ?Sized,
-{
-    // busy-window ends when all chains are quiet
-    let rhs_bw = |delta| {
-        chain_last_callback.service_needed(delta) + all_other_callbacks.service_needed(delta)
-    };
-    // right-hand side of recurrence for chain analysis
-    let rhs = |offset, response| {
-        // cost of last callback in chain under analysis
-        let wcet = chain_last_callback.least_wcet_in_interval(offset + response);
-        // account for non-preemptive execution of last callback
-        let interference_interval = if response > wcet {
-            offset + response - wcet + 1
-        } else {
-            offset + 1
-        };
-        chain_last_callback.service_needed(offset + 1)
-            + all_other_callbacks.service_needed(interference_interval)
-    };
-    fixed_point::bound_response_time(supply, chain_last_callback, rhs_bw, rhs, limit)
-}
-
 // NOTE: Just a sketch, no proof of correctness yet.
 pub fn rta_processing_chain_window_aware<SBF, AB, RBF>(
     supply: &SBF,
