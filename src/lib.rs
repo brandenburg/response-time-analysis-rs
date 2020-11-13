@@ -581,6 +581,14 @@ mod tests {
         assert_eq!(cf.cost_of_jobs(9), 306);
         cf.extrapolate(10);
         assert_eq!(cf.cost_of_jobs(9), 207);
+
+	let wcets2 = vec![145,149,151,153,157,160,163,166,168,171,174];
+	let mut cf2 = demand::CostFunction::from_iter(wcets2);
+	assert_eq!(cf2.cost_of_jobs(11), 174);
+	assert_eq!(cf2.cost_of_jobs(12), 319);
+	assert_eq!(cf2.cost_of_jobs(4), 153);
+	assert_eq!(cf2.cost_of_jobs(9), 168);
+	assert_eq!(cf2.cost_of_jobs(4+9), 153+168);
     }
 
     #[test]
