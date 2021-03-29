@@ -1,10 +1,13 @@
-use crate::arrivals::ArrivalBound;
-use crate::time::Duration;
+use std::cell::RefCell;
+use std::collections::VecDeque;
+use std::iter::{self, FromIterator};
+use std::rc::Rc;
 
 use auto_impl::auto_impl;
 use itertools::Itertools;
-use std::collections::VecDeque;
-use std::iter::{self, FromIterator};
+
+use crate::arrivals::ArrivalBound;
+use crate::time::Duration;
 
 #[auto_impl(&, Box, Rc)]
 pub trait JobCostModel {
@@ -60,7 +63,11 @@ impl JobCostModel for CostFunction {
             // resolve large 'n' by super-additivity of cost function
             let x = n / self.wcet_of_n_jobs.len();
             let y = n % self.wcet_of_n_jobs.len();
-            let prefix = x as Duration * self.wcet_of_n_jobs[self.wcet_of_n_jobs.len() - 1];
+            let prefix = if x > 0 {
+                x as Duration * self.wcet_of_n_jobs[self.wcet_of_n_jobs.len() - 1]
+            } else {
+                0
+            };
             let suffix = if y > 0 {
                 // -1 to account for zero-based indexing: offset 0 holds cost of 1 job
                 self.wcet_of_n_jobs[y - 1]
@@ -157,6 +164,37 @@ impl FromIterator<Duration> for CostFunction {
         CostFunction {
             wcet_of_n_jobs: wcets,
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct ExtrapolatingCostFunction {
+    prefix: Rc<RefCell<CostFunction>>,
+}
+
+impl ExtrapolatingCostFunction {
+    pub fn new(costfn: CostFunction) -> Self {
+        ExtrapolatingCostFunction {
+            prefix: Rc::new(RefCell::new(costfn)),
+        }
+    }
+}
+
+impl JobCostModel for ExtrapolatingCostFunction {
+    fn cost_of_jobs(&self, n: usize) -> Duration {
+        let mut costfn = self.prefix.borrow_mut();
+        costfn.extrapolate(n + 1);
+        costfn.cost_of_jobs(n)
+    }
+
+    fn job_cost_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new((1..).map(move |n| self.cost_of_jobs(n) - self.cost_of_jobs(n - 1)))
+    }
+
+    fn least_wcet(&self, n: usize) -> Duration {
+        // Don't need to extrapolate for this; the least delta is
+        // fully determined by the initial prefix.
+        self.prefix.borrow().least_wcet(n)
     }
 }
 
