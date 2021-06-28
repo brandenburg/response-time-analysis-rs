@@ -3,16 +3,18 @@ pub mod demand;
 pub mod fixed_point;
 pub mod supply;
 pub mod time;
+pub mod wcet;
 
 pub mod ros2;
 
 #[cfg(test)]
 mod tests {
     use crate::arrivals::{self, ArrivalBound};
-    use crate::demand::{self, JobCostModel, RequestBound};
+    use crate::demand::{self, RequestBound};
     use crate::ros2;
     use crate::supply::{self, SupplyBound};
     use crate::time::Duration;
+    use crate::wcet::{self, JobCostModel};
     use assert_approx_eq::assert_approx_eq;
 
     use std::iter::FromIterator;
@@ -530,7 +532,7 @@ mod tests {
 
     #[test]
     fn cost_models() {
-        let wcet: Duration = 10;
+        let wcet: wcet::Scalar = wcet::Scalar::from(10);
 
         assert_eq!(wcet.cost_of_jobs(0), 0);
         assert_eq!(wcet.cost_of_jobs(3), 30);
@@ -538,7 +540,7 @@ mod tests {
         let jobs1: Vec<_> = wcet.job_cost_iter().take(5).collect();
         assert_eq!(jobs1, [10, 10, 10, 10, 10]);
 
-        let multi_frame: Vec<Duration> = vec![3, 2, 1];
+        let multi_frame: wcet::Multiframe = wcet::Multiframe::new(vec![3, 2, 1]);
         assert_eq!(multi_frame.cost_of_jobs(0), 0);
         assert_eq!(multi_frame.cost_of_jobs(1), 3);
         assert_eq!(multi_frame.cost_of_jobs(2), 5);
@@ -550,7 +552,7 @@ mod tests {
         assert_eq!(jobs2, [3, 2, 1, 3, 2]);
 
         let trace = vec![1, 1, 3, 1, 2, 2, 1, 3, 1, 0, 0, 3, 2, 0, 1, 1];
-        let cf = demand::CostFunction::from_trace(trace.iter(), 3);
+        let cf = wcet::Curve::from_trace(trace.iter(), 3);
         assert_eq!(cf.cost_of_jobs(0), 0);
         assert_eq!(cf.cost_of_jobs(1), 3);
         assert_eq!(cf.cost_of_jobs(2), 5);
@@ -562,7 +564,7 @@ mod tests {
         assert_eq!(jobs3, [3, 2, 1, 3, 2, 1, 3, 2, 1, 3]);
 
         let wcets = vec![15, 25, 30];
-        let cf2 = demand::CostFunction::from_iter(wcets);
+        let cf2 = wcet::Curve::from_iter(wcets);
         assert_eq!(cf2.cost_of_jobs(0), 0);
         assert_eq!(cf2.cost_of_jobs(1), 15);
         assert_eq!(cf2.cost_of_jobs(2), 25);
@@ -577,13 +579,13 @@ mod tests {
     #[test]
     fn cost_extrapolation() {
         let wcets = vec![100, 101, 102, 103, 104, 105, 205, 206];
-        let mut cf = demand::CostFunction::from_iter(wcets);
+        let mut cf = wcet::Curve::from_iter(wcets);
         assert_eq!(cf.cost_of_jobs(9), 306);
         cf.extrapolate(10);
         assert_eq!(cf.cost_of_jobs(9), 207);
 
         let wcets2 = vec![145, 149, 151, 153, 157, 160, 163, 166, 168, 171, 174];
-        let cf2 = demand::ExtrapolatingCostFunction::new(demand::CostFunction::from_iter(wcets2));
+        let cf2 = wcet::ExtrapolatingCurve::new(wcet::Curve::from_iter(wcets2));
         assert_eq!(cf2.cost_of_jobs(11), 174);
         assert_eq!(cf2.cost_of_jobs(12), 319);
         assert_eq!(cf2.cost_of_jobs(4), 153);
@@ -599,7 +601,7 @@ mod tests {
         };
 
         let rbf = demand::RBF {
-            wcet: 2,
+            wcet: wcet::Scalar::from(2),
             arrival_bound: arrivals::Sporadic {
                 jitter: 2,
                 min_inter_arrival: 5,
@@ -620,7 +622,7 @@ mod tests {
         };
 
         let rbf = demand::RBF {
-            wcet: 2,
+            wcet: wcet::Scalar::from(2),
             arrival_bound: arrivals::Never {},
         };
 
@@ -638,17 +640,17 @@ mod tests {
 
         // use RBF with boxed parameters, just because we can
         let rbf = demand::RBF {
-            wcet: Box::new(1),
+            wcet: Box::new(wcet::Scalar::from(1)),
             arrival_bound: Box::new(arrivals::Periodic { period: 10 }),
         };
 
         let interference = vec![
             demand::RBF {
-                wcet: 1,
+                wcet: wcet::Scalar::from(1),
                 arrival_bound: arrivals::Periodic { period: 10 },
             },
             demand::RBF {
-                wcet: 3,
+                wcet: wcet::Scalar::from(3),
                 arrival_bound: arrivals::Periodic { period: 20 },
             },
         ];
@@ -670,17 +672,17 @@ mod tests {
         };
 
         let rbf = demand::RBF {
-            wcet: 1,
+            wcet: wcet::Scalar::from(1),
             arrival_bound: arrivals::Periodic { period: 10 },
         };
 
         let interference: Vec<Box<dyn RequestBound>> = vec![
             Box::new(demand::RBF {
-                wcet: 1,
+                wcet: wcet::Scalar::from(1),
                 arrival_bound: arrivals::Periodic { period: 10 },
             }),
             Box::new(demand::RBF {
-                wcet: 3,
+                wcet: wcet::Scalar::from(3),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 10,
@@ -701,17 +703,17 @@ mod tests {
         };
 
         let rbf = demand::RBF {
-            wcet: 1,
+            wcet: wcet::Scalar::from(1),
             arrival_bound: arrivals::Periodic { period: 10 },
         };
 
         let interference = vec![
             demand::RBF {
-                wcet: 1,
+                wcet: wcet::Scalar::from(1),
                 arrival_bound: arrivals::Periodic { period: 10 },
             },
             demand::RBF {
-                wcet: 3,
+                wcet: wcet::Scalar::from(3),
                 arrival_bound: arrivals::Periodic { period: 20 },
             },
         ];
@@ -739,18 +741,18 @@ mod tests {
 
         let all_chains: Vec<Box<dyn RequestBound>> = vec![
             Box::new(demand::RBF {
-                wcet: total1,
+                wcet: wcet::Scalar::from(total1),
                 arrival_bound: arrivals::Periodic { period: 25 },
             }),
             Box::new(demand::RBF {
-                wcet: total2,
+                wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
-                wcet: total3,
+                wcet: wcet::Scalar::from(total3),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
@@ -781,25 +783,25 @@ mod tests {
         let total3: Duration = chain3_wcet.iter().sum();
 
         let chain1_prefix = demand::RBF {
-            wcet: prefix1,
+            wcet: wcet::Scalar::from(prefix1),
             arrival_bound: arrivals::Periodic { period: 25 },
         };
 
         let chain1_suffix = demand::RBF {
-            wcet: chain1_wcet[2],
+            wcet: wcet::Scalar::from(chain1_wcet[2]),
             arrival_bound: arrivals::Periodic { period: 25 },
         };
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
             Box::new(demand::RBF {
-                wcet: total2,
+                wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
-                wcet: total3,
+                wcet: wcet::Scalar::from(total3),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
@@ -834,14 +836,14 @@ mod tests {
 
         let other_chains: Vec<Box<dyn RequestBound>> = vec![
             Box::new(demand::RBF {
-                wcet: total2,
+                wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
-                wcet: total3,
+                wcet: wcet::Scalar::from(total3),
                 arrival_bound: arrivals::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,

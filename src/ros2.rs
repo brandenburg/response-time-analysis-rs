@@ -3,6 +3,7 @@ use crate::demand::{self, AggregateRequestBound, RequestBound};
 use crate::fixed_point;
 use crate::supply::SupplyBound;
 use crate::time::Duration;
+use crate::wcet::Scalar as ScalarWCET;
 
 pub fn rta_event_source<SBF, RBF>(
     supply: &SBF,
@@ -135,12 +136,12 @@ where
     };
 
     let prefix_rbf = demand::RBF {
-        wcet: prefix_cost,
+        wcet: ScalarWCET::from(prefix_cost),
         arrival_bound: chain_arrival_bound.clone(),
     };
 
     let suffix_rbf = demand::RBF {
-        wcet: last_cb,
+        wcet: ScalarWCET::from(last_cb),
         arrival_bound: chain_arrival_bound.clone(),
     };
 
