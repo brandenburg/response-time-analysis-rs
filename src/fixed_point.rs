@@ -4,21 +4,14 @@ use crate::time::{Duration, Instant};
 
 use std::cmp::Ordering;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd)]
-pub enum SearchFailure {
-    DivergenceLimitExceeded { offset: Instant, limit: Duration },
-}
+use thiserror::Error;
 
-impl std::fmt::Display for SearchFailure {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            SearchFailure::DivergenceLimitExceeded { offset, limit } => write!(
-                f,
-                "no fixed point less than {} found for offset {}",
-                limit, offset
-            ),
-        }
-    }
+/// Error type returned when a fixed point search fails.
+#[derive(Debug, Error, Copy, Clone, Eq, PartialEq, PartialOrd)]
+pub enum SearchFailure {
+    /// No fixed point found below the given divergence threshold.
+    #[error("no fixed point less than {limit} found for offset {offset}")]
+    DivergenceLimitExceeded { offset: Instant, limit: Duration },
 }
 
 pub type SearchResult = Result<Duration, SearchFailure>;
