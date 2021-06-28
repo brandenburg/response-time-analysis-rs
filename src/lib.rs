@@ -644,7 +644,7 @@ mod tests {
             arrival_bound: Box::new(arrivals::Periodic { period: 10 }),
         };
 
-        let interference = vec![
+        let interference = demand::Aggregate::new(vec![
             demand::RBF {
                 wcet: wcet::Scalar::from(1),
                 arrival_bound: arrivals::Periodic { period: 10 },
@@ -653,7 +653,7 @@ mod tests {
                 wcet: wcet::Scalar::from(3),
                 arrival_bound: arrivals::Periodic { period: 20 },
             },
-        ];
+        ]);
 
         let result = ros2::rta_timer(&sbf, &rbf, &interference, 0, 100);
         assert!(result.is_ok());
@@ -690,7 +690,7 @@ mod tests {
             }),
         ];
 
-        let result = ros2::rta_timer(&sbf, &rbf, &interference[0..2], 0, 100);
+        let result = ros2::rta_timer(&sbf, &rbf, &demand::Slice::of(&interference[0..2]), 0, 100);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 17);
     }
@@ -707,7 +707,7 @@ mod tests {
             arrival_bound: arrivals::Periodic { period: 10 },
         };
 
-        let interference = vec![
+        let interference = demand::Aggregate::new(vec![
             demand::RBF {
                 wcet: wcet::Scalar::from(1),
                 arrival_bound: arrivals::Periodic { period: 10 },
@@ -716,7 +716,7 @@ mod tests {
                 wcet: wcet::Scalar::from(3),
                 arrival_bound: arrivals::Periodic { period: 20 },
             },
-        ];
+        ]);
 
         let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
         assert!(result.is_ok());
@@ -739,11 +739,11 @@ mod tests {
         let total2: Duration = chain2_wcet.iter().sum();
         let total3: Duration = chain3_wcet.iter().sum();
 
-        let all_chains: Vec<Box<dyn RequestBound>> = vec![
+        let all_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total1),
                 arrival_bound: arrivals::Periodic { period: 25 },
-            }),
+            }) as Box<dyn RequestBound>,
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
@@ -758,7 +758,7 @@ mod tests {
                     jitter: 25,
                 },
             }),
-        ];
+        ]);
 
         let last_cb = *chain1_wcet.iter().last().unwrap();
 
@@ -792,7 +792,7 @@ mod tests {
             arrival_bound: arrivals::Periodic { period: 25 },
         };
 
-        let other_chains: Vec<Box<dyn RequestBound>> = vec![
+        let other_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
@@ -807,10 +807,12 @@ mod tests {
                     jitter: 25,
                 },
             }),
-        ];
+        ]);
 
-        let all_other_callbacks: Vec<Box<dyn RequestBound>> =
-            vec![Box::new(other_chains), Box::new(chain1_prefix)];
+        let all_other_callbacks = demand::Aggregate::new(vec![
+            Box::new(other_chains) as Box<dyn RequestBound>,
+            Box::new(chain1_prefix),
+        ]);
 
         let result =
             ros2::rta_polling_point_callback(&sbf, &chain1_suffix, &all_other_callbacks, 1000);
@@ -834,7 +836,7 @@ mod tests {
 
         let chain1_arrivals = arrivals::Periodic { period: 25 };
 
-        let other_chains: Vec<Box<dyn RequestBound>> = vec![
+        let other_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
                 arrival_bound: arrivals::Sporadic {
@@ -849,7 +851,7 @@ mod tests {
                     jitter: 25,
                 },
             }),
-        ];
+        ]);
 
         let result = ros2::rta_processing_chain_window_aware(
             &sbf,
