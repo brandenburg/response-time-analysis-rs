@@ -1,6 +1,6 @@
 use crate::demand::RequestBound;
 use crate::supply::SupplyBound;
-use crate::time::{Duration, Instant};
+use crate::time::{Duration, Instant, Service};
 
 use std::cmp::Ordering;
 
@@ -16,7 +16,10 @@ pub enum SearchFailure {
 
 pub type SearchResult = Result<Duration, SearchFailure>;
 
-pub fn fixed_point_search_with_offset<SBF, RHS>(
+/// Conduct an iterative fixed point search up to a given divergence
+/// threshold, assuming a given fixed `offset` within the busy
+/// window.
+pub fn search_with_offset<SBF, RHS>(
     supply: &SBF,
     offset: Instant,
     divergence_limit: Duration,
@@ -24,7 +27,7 @@ pub fn fixed_point_search_with_offset<SBF, RHS>(
 ) -> SearchResult
 where
     SBF: SupplyBound + ?Sized,
-    RHS: Fn(Duration) -> Duration,
+    RHS: Fn(Duration) -> Service,
 {
     let mut assumed_response_time = 1;
     while assumed_response_time <= divergence_limit {
@@ -45,7 +48,11 @@ where
     })
 }
 
-pub fn brute_force_fixed_point_search_with_offset<SBF, RHS>(
+/// Very slow, naive search for a fixed point up to the given
+/// `divergence_limit`, assuming a given fixed `offset` within the
+/// busy window. Do not use --- use [search_with_offset] instead.
+#[cfg(debug_assertions)]
+fn brute_force_search_with_offset<SBF, RHS>(
     supply: &SBF,
     offset: Instant,
     divergence_limit: Duration,
@@ -53,7 +60,7 @@ pub fn brute_force_fixed_point_search_with_offset<SBF, RHS>(
 ) -> SearchResult
 where
     SBF: SupplyBound + ?Sized,
-    RHS: Fn(Duration) -> Duration,
+    RHS: Fn(Duration) -> Service,
 {
     for r in 1..=divergence_limit {
         let lhs = supply.provided_service(offset + r);
@@ -71,24 +78,32 @@ where
     })
 }
 
-pub fn fixed_point_search<SBF, RHS>(
+/// Iterative search for a fixed point up to a given
+/// `divergence_limit`, assuming a given processor supply and a
+/// generic workload bound.
+pub fn search<SBF, RHS>(
     supply: &SBF,
     divergence_limit: Duration,
     workload_bound: RHS,
 ) -> SearchResult
 where
     SBF: SupplyBound + ?Sized,
-    RHS: Fn(Duration) -> Duration,
+    RHS: Fn(Duration) -> Service,
 {
-    let bw = fixed_point_search_with_offset(supply, 0, divergence_limit, &workload_bound);
+    let bw = search_with_offset(supply, 0, divergence_limit, &workload_bound);
+    // In debug mode, compare against the brute-force solution.
+    #[cfg(debug_assertions)]
     debug_assert_eq!(
-        brute_force_fixed_point_search_with_offset(supply, 0, divergence_limit, &workload_bound),
+        brute_force_search_with_offset(supply, 0, divergence_limit, &workload_bound),
         bw
     );
     bw
 }
 
-pub fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> SearchResult {
+/// Given a sequence of [SearchResult]s, either return the maximum
+/// finite result (if no divergence errors occurred) or propagate the
+/// first error encountered.
+fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> SearchResult {
     rta_per_offset
         .max_by(|a, b| {
             // propagate any errors values
@@ -108,6 +123,21 @@ pub fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> 
         .unwrap_or(Ok(0))
 }
 
+/// Try to find a response-time bound for a given processor supply
+/// model and a given processor demand model.
+///
+/// The search for a fixed point will be aborted if the given
+/// divergence threshold indicated by `limit` is reached.
+///
+/// The fixed-point search relies on three relevant characterizations
+/// of processor demand:
+/// - `demand` is demand model from which all points are inferred at
+///   which the demand curve exhibits "steps".
+/// - `bw_demand_bound` is the right-hand side of the fixed-point
+///   equation describing the maximum busy-window length, i.e., the
+///   demand of "everything".
+/// - `offset_demand_bound` is the right-hand side of the fixed-point
+///   equation describing the response time for a given offset.
 pub fn bound_response_time<SBF, RBF, F, G>(
     supply: &SBF,
     demand: &RBF,
@@ -118,11 +148,11 @@ pub fn bound_response_time<SBF, RBF, F, G>(
 where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
-    F: Fn(Duration) -> Duration,
-    G: Fn(Instant, Duration) -> Duration,
+    F: Fn(Duration) -> Service,
+    G: Fn(Instant, Duration) -> Service,
 {
     // find a bound on the maximum busy-window
-    let max_bw = fixed_point_search(supply, limit, bw_demand_bound)?;
+    let max_bw = search(supply, limit, bw_demand_bound)?;
     // Look at all points where the demand curve "steps".
     // Note that steps_iter() yields interval lengths, but we are interested in
     // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
@@ -134,9 +164,10 @@ where
     // for each relevant offset in the search space,
     let rta_bounds = offsets.map(|offset| {
         let rhs = |delta| offset_demand_bound(offset, delta);
-        let rta = fixed_point_search_with_offset(supply, offset, limit, &rhs);
+        let rta = search_with_offset(supply, offset, limit, &rhs);
+        // In debug mode, compare against the brute-force solution.
         debug_assert_eq!(
-            brute_force_fixed_point_search_with_offset(supply, offset, limit, &rhs),
+            brute_force_search_with_offset(supply, offset, limit, &rhs),
             rta
         );
         rta

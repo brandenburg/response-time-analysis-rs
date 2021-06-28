@@ -101,7 +101,7 @@ where
             all_chains.service_needed(1)
         }
     };
-    fixed_point::fixed_point_search(supply, limit, rhs)
+    fixed_point::search(supply, limit, rhs)
 }
 
 // NOTE: Just a sketch, no proof of correctness yet.
