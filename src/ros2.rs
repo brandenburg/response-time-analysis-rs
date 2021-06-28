@@ -1,4 +1,4 @@
-use crate::arrivals::ArrivalBound;
+use crate::arrival::ArrivalBound;
 use crate::demand::{self, AggregateRequestBound, RequestBound};
 use crate::fixed_point;
 use crate::supply::SupplyBound;

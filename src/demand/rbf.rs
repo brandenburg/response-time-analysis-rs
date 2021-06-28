@@ -1,4 +1,4 @@
-use crate::arrivals::ArrivalBound;
+use crate::arrival::ArrivalBound;
 use crate::time::{Duration, Service};
 use crate::wcet::JobCostModel;
 

@@ -1,4 +1,4 @@
-pub mod arrivals;
+pub mod arrival;
 pub mod demand;
 pub mod fixed_point;
 pub mod supply;
@@ -9,7 +9,7 @@ pub mod ros2;
 
 #[cfg(test)]
 mod tests {
-    use crate::arrivals::{self, ArrivalBound};
+    use crate::arrival::{self, ArrivalBound};
     use crate::demand::{self, RequestBound};
     use crate::ros2;
     use crate::supply::{self, SupplyBound};
@@ -21,7 +21,7 @@ mod tests {
 
     #[test]
     fn periodic_arrivals() {
-        let a = arrivals::Periodic { period: 10 };
+        let a = arrival::Periodic { period: 10 };
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 1);
@@ -35,9 +35,9 @@ mod tests {
 
     #[test]
     fn period_arrivals_dmin() {
-        let ab = arrivals::Periodic { period: 10 };
+        let ab = arrival::Periodic { period: 10 };
         let dmin_ref = vec![(0, 0), (1, 0), (2, 10), (3, 20), (4, 30), (5, 40)];
-        let dmin = arrivals::delta_min_iter(&ab);
+        let dmin = arrival::delta_min_iter(&ab);
 
         for (should, is) in dmin_ref.iter().zip(dmin) {
             assert_eq!(*should, is);
@@ -46,9 +46,9 @@ mod tests {
 
     #[test]
     fn periodic_arrivals_via_unroll_sporadic() {
-        let p = arrivals::Periodic { period: 10 };
-        let s = arrivals::Sporadic::from(p);
-        let a = arrivals::CurvePrefix::unroll_sporadic(&s, 1000);
+        let p = arrival::Periodic { period: 10 };
+        let s = arrival::Sporadic::from(p);
+        let a = arrival::Curve::unroll_sporadic(&s, 1000);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 1);
@@ -63,9 +63,9 @@ mod tests {
 
     #[test]
     fn periodic_arrivals_via_sporadic() {
-        let p = arrivals::Periodic { period: 10 };
-        let s = arrivals::Sporadic::from(p);
-        let a = arrivals::CurvePrefix::from(s);
+        let p = arrival::Periodic { period: 10 };
+        let s = arrival::Sporadic::from(p);
+        let a = arrival::Curve::from(s);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 1);
@@ -79,8 +79,8 @@ mod tests {
     }
     #[test]
     fn periodic_arrivals_unrolled() {
-        let p = arrivals::Periodic { period: 10 };
-        let a = arrivals::CurvePrefix::from(p);
+        let p = arrival::Periodic { period: 10 };
+        let a = arrival::Curve::from(p);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 1);
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn periodic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
-        let a = arrivals::CurvePrefix::from_trace(trace.iter(), 10);
+        let a = arrival::Curve::from_trace(trace.iter(), 10);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 1);
@@ -111,12 +111,12 @@ mod tests {
 
     #[test]
     fn compare_periodic_arrivals() {
-        let p = arrivals::Periodic { period: 10 };
-        let s = arrivals::Sporadic::from(p);
-        let a = arrivals::CurvePrefix::from(p);
-        let b = arrivals::CurvePrefix::from(s);
+        let p = arrival::Periodic { period: 10 };
+        let s = arrival::Sporadic::from(p);
+        let a = arrival::Curve::from(p);
+        let b = arrival::Curve::from(s);
         let trace: Vec<u64> = vec![0, 10, 20, 30, 40];
-        let t = arrivals::CurvePrefix::from_trace(trace.iter(), 2);
+        let t = arrival::Curve::from_trace(trace.iter(), 2);
         for delta in 0..1000 {
             assert_eq!(a.number_arrivals(delta), p.number_arrivals(delta));
             assert_eq!(s.number_arrivals(delta), p.number_arrivals(delta));
@@ -136,19 +136,19 @@ mod tests {
 
     #[test]
     fn periodic_iter() {
-        let p = arrivals::Periodic { period: 10 };
+        let p = arrival::Periodic { period: 10 };
         let steps: Vec<_> = p.steps_iter().take(5).collect();
         assert_eq!(steps, [1, 11, 21, 31, 41]);
         brute_force_iter_check(&p);
 
-        let p2 = arrivals::CurvePrefix::from(arrivals::Sporadic::from(p));
+        let p2 = arrival::Curve::from(arrival::Sporadic::from(p));
         let steps2: Vec<_> = p2.steps_iter().take(5).collect();
         assert_eq!(steps2, [1, 11, 21, 31, 41]);
     }
 
     #[test]
     fn sporadic_arrivals() {
-        let a = arrivals::Sporadic {
+        let a = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 3,
         };
@@ -166,7 +166,7 @@ mod tests {
     #[test]
     fn sporadic_arrivals_from_trace() {
         let trace: Vec<u64> = vec![0, 7, 17, 27, 37, 47, 57, 67, 77, 87, 110, 117];
-        let a = arrivals::CurvePrefix::from_trace(trace.iter(), 5);
+        let a = arrival::Curve::from_trace(trace.iter(), 5);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 2);
@@ -176,11 +176,11 @@ mod tests {
 
     #[test]
     fn sporadic_arrivals_unrolled() {
-        let s = arrivals::Sporadic {
+        let s = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 3,
         };
-        let a = arrivals::CurvePrefix::from(s);
+        let a = arrival::Curve::from(s);
         assert_eq!(a.number_arrivals(0), 0);
         assert_eq!(a.number_arrivals(1), 1);
         assert_eq!(a.number_arrivals(8), 2);
@@ -194,7 +194,7 @@ mod tests {
 
     #[test]
     fn sporadic_arrivals_large_jitter() {
-        let a = arrivals::Sporadic {
+        let a = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 16,
         };
@@ -206,11 +206,11 @@ mod tests {
 
     #[test]
     fn compare_sporadic_arrivals() {
-        let s = arrivals::Sporadic {
+        let s = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 16,
         };
-        let a = arrivals::CurvePrefix::from(s);
+        let a = arrival::Curve::from(s);
         for delta in 0..1000 {
             assert_eq!(a.number_arrivals(delta), s.number_arrivals(delta));
         }
@@ -218,25 +218,25 @@ mod tests {
 
     #[test]
     fn sporadic_iter() {
-        let s1 = arrivals::Sporadic {
+        let s1 = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 3,
         };
         let steps1: Vec<_> = s1.steps_iter().take(6).collect();
         assert_eq!(steps1, [1, 8, 18, 28, 38, 48]);
 
-        let s2 = arrivals::Sporadic {
+        let s2 = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 16,
         };
         let steps2: Vec<_> = s2.steps_iter().take(6).collect();
         assert_eq!(steps2, [1, 5, 15, 25, 35, 45]);
 
-        let s3 = arrivals::CurvePrefix::from(s1);
+        let s3 = arrival::Curve::from(s1);
         let steps3: Vec<_> = s3.steps_iter().take(6).collect();
         assert_eq!(steps3, [1, 8, 18, 28, 38, 48]);
 
-        let s4 = arrivals::CurvePrefix::from(s2);
+        let s4 = arrival::Curve::from(s2);
         let steps4: Vec<_> = s4.steps_iter().take(6).collect();
         assert_eq!(steps4, [1, 5, 15, 25, 35, 45]);
 
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn poisson() {
-        let p = arrivals::Poisson { rate: 0.01 };
+        let p = arrival::Poisson { rate: 0.01 };
         assert_approx_eq!(p.arrival_probability(100, 0), 0.368, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 1), 0.368, 0.001);
         assert_approx_eq!(p.arrival_probability(100, 2), 0.184, 0.001);
@@ -260,29 +260,29 @@ mod tests {
 
     #[test]
     fn never_arrives() {
-        let p = arrivals::Never {};
+        let p = arrival::Never {};
         assert_eq!(p.number_arrivals(10), 0);
         let steps: Vec<_> = p.steps_iter().collect();
         assert_eq!(steps, []);
-        let prop = arrivals::Propagated {
+        let prop = arrival::Propagated {
             input_event_model: p,
             response_time_jitter: 3,
         };
         assert_eq!(prop.number_arrivals(10), 0);
         let steps: Vec<_> = p.steps_iter().collect();
         assert_eq!(steps, []);
-        let dmin: Vec<_> = arrivals::nonzero_delta_min_iter(&p).collect();
+        let dmin: Vec<_> = arrival::nonzero_delta_min_iter(&p).collect();
         assert_eq!(dmin, []);
     }
 
     #[test]
     fn propagated_jitter() {
-        let p = arrivals::Periodic { period: 10 };
-        let s = arrivals::Sporadic {
+        let p = arrival::Periodic { period: 10 };
+        let s = arrival::Sporadic {
             min_inter_arrival: 10,
             jitter: 3,
         };
-        let prop = arrivals::Propagated {
+        let prop = arrival::Propagated {
             input_event_model: p,
             response_time_jitter: 3,
         };
@@ -299,11 +299,11 @@ mod tests {
     #[test]
     fn aggregated_arrivals() {
         let agg: Vec<Box<dyn ArrivalBound>> = vec![
-            Box::new(arrivals::Sporadic {
+            Box::new(arrival::Sporadic {
                 min_inter_arrival: 3,
                 jitter: 0,
             }),
-            Box::new(arrivals::Periodic { period: 5 }),
+            Box::new(arrival::Periodic { period: 5 }),
         ];
 
         let ab = &agg;
@@ -602,7 +602,7 @@ mod tests {
 
         let rbf = demand::RBF {
             wcet: wcet::Scalar::from(2),
-            arrival_bound: arrivals::Sporadic {
+            arrival_bound: arrival::Sporadic {
                 jitter: 2,
                 min_inter_arrival: 5,
             },
@@ -623,7 +623,7 @@ mod tests {
 
         let rbf = demand::RBF {
             wcet: wcet::Scalar::from(2),
-            arrival_bound: arrivals::Never {},
+            arrival_bound: arrival::Never {},
         };
 
         let result = ros2::rta_event_source(&sbf, &rbf, 100);
@@ -641,17 +641,17 @@ mod tests {
         // use RBF with boxed parameters, just because we can
         let rbf = demand::RBF {
             wcet: Box::new(wcet::Scalar::from(1)),
-            arrival_bound: Box::new(arrivals::Periodic { period: 10 }),
+            arrival_bound: Box::new(arrival::Periodic { period: 10 }),
         };
 
         let interference = demand::Aggregate::new(vec![
             demand::RBF {
                 wcet: wcet::Scalar::from(1),
-                arrival_bound: arrivals::Periodic { period: 10 },
+                arrival_bound: arrival::Periodic { period: 10 },
             },
             demand::RBF {
                 wcet: wcet::Scalar::from(3),
-                arrival_bound: arrivals::Periodic { period: 20 },
+                arrival_bound: arrival::Periodic { period: 20 },
             },
         ]);
 
@@ -673,17 +673,17 @@ mod tests {
 
         let rbf = demand::RBF {
             wcet: wcet::Scalar::from(1),
-            arrival_bound: arrivals::Periodic { period: 10 },
+            arrival_bound: arrival::Periodic { period: 10 },
         };
 
         let interference: Vec<Box<dyn RequestBound>> = vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(1),
-                arrival_bound: arrivals::Periodic { period: 10 },
+                arrival_bound: arrival::Periodic { period: 10 },
             }),
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(3),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 10,
                 },
@@ -704,17 +704,17 @@ mod tests {
 
         let rbf = demand::RBF {
             wcet: wcet::Scalar::from(1),
-            arrival_bound: arrivals::Periodic { period: 10 },
+            arrival_bound: arrival::Periodic { period: 10 },
         };
 
         let interference = demand::Aggregate::new(vec![
             demand::RBF {
                 wcet: wcet::Scalar::from(1),
-                arrival_bound: arrivals::Periodic { period: 10 },
+                arrival_bound: arrival::Periodic { period: 10 },
             },
             demand::RBF {
                 wcet: wcet::Scalar::from(3),
-                arrival_bound: arrivals::Periodic { period: 20 },
+                arrival_bound: arrival::Periodic { period: 20 },
             },
         ]);
 
@@ -742,18 +742,18 @@ mod tests {
         let all_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total1),
-                arrival_bound: arrivals::Periodic { period: 25 },
+                arrival_bound: arrival::Periodic { period: 25 },
             }) as Box<dyn RequestBound>,
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total3),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
@@ -784,25 +784,25 @@ mod tests {
 
         let chain1_prefix = demand::RBF {
             wcet: wcet::Scalar::from(prefix1),
-            arrival_bound: arrivals::Periodic { period: 25 },
+            arrival_bound: arrival::Periodic { period: 25 },
         };
 
         let chain1_suffix = demand::RBF {
             wcet: wcet::Scalar::from(chain1_wcet[2]),
-            arrival_bound: arrivals::Periodic { period: 25 },
+            arrival_bound: arrival::Periodic { period: 25 },
         };
 
         let other_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total3),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
@@ -834,19 +834,19 @@ mod tests {
         let total2: Duration = chain2_wcet.iter().sum();
         let total3: Duration = chain3_wcet.iter().sum();
 
-        let chain1_arrivals = arrivals::Periodic { period: 25 };
+        let chain1_arrivals = arrival::Periodic { period: 25 };
 
         let other_chains = demand::Aggregate::new(vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total2),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
             }),
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total3),
-                arrival_bound: arrivals::Sporadic {
+                arrival_bound: arrival::Sporadic {
                     min_inter_arrival: 20,
                     jitter: 25,
                 },
@@ -868,7 +868,7 @@ mod tests {
     #[test]
     fn curve_extrapolation() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
-        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let mut curve = arrival::Curve::from_iter(dmin.iter().copied());
 
         // assert_eq!(curve.number_arrivals(22), 9);
         // assert_eq!(curve.number_arrivals(23), 10);
@@ -910,7 +910,7 @@ mod tests {
 
         for (should, is) in (0..)
             .zip(dmin_ref.iter().copied())
-            .zip(arrivals::delta_min_iter(&curve))
+            .zip(arrival::delta_min_iter(&curve))
         {
             assert_eq!(should, is);
         }
@@ -919,7 +919,7 @@ mod tests {
     #[test]
     fn curve_jitter_steps() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
-        let curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let curve = arrival::Curve::from_iter(dmin.iter().copied());
         let curve_with_jitter = curve.clone_with_jitter(2);
         brute_force_iter_check(&curve);
         brute_force_iter_check(&curve_with_jitter);
@@ -928,10 +928,10 @@ mod tests {
     #[test]
     fn curve_on_demand_jitter() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
-        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let mut curve = arrival::Curve::from_iter(dmin.iter().copied());
         let horizon = 1000;
         curve.extrapolate(horizon);
-        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+        let od_curve = arrival::ExtrapolatingCurve::new(curve.clone());
 
         let jitters: Vec<Duration> = vec![2, 5, 10, 13, 17, 19, 21, 123];
         for j in jitters.iter() {
@@ -977,9 +977,9 @@ mod tests {
     #[test]
     fn curve_on_demand_extrapolation() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
-        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
+        let mut curve = arrival::Curve::from_iter(dmin.iter().copied());
 
-        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+        let od_curve = arrival::ExtrapolatingCurve::new(curve.clone());
 
         let horizon = 1000;
 
@@ -1007,8 +1007,8 @@ mod tests {
     #[test]
     fn curve_on_demand_extrapolation_jitter_propagation() {
         let dmin: Vec<Duration> = vec![1, 2, 12, 15, 18, 21];
-        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
-        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+        let mut curve = arrival::Curve::from_iter(dmin.iter().copied());
+        let od_curve = arrival::ExtrapolatingCurve::new(curve.clone());
 
         let horizon = 200;
         curve.extrapolate(horizon);
@@ -1038,9 +1038,9 @@ mod tests {
     #[test]
     fn curve_on_demand_extrapolation_jitter_propagation_single() {
         let dmin: Vec<Duration> = vec![10];
-        let periodic = arrivals::Periodic { period: dmin[0] };
-        let mut curve = arrivals::CurvePrefix::from_iter(dmin.iter().copied());
-        let od_curve = arrivals::ExtrapolatingCurvePrefix::new(curve.clone());
+        let periodic = arrival::Periodic { period: dmin[0] };
+        let mut curve = arrival::Curve::from_iter(dmin.iter().copied());
+        let od_curve = arrival::ExtrapolatingCurve::new(curve.clone());
 
         let horizon = 200;
         curve.extrapolate(horizon);
