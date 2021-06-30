@@ -1,10 +1,9 @@
-use crate::demand::RequestBound;
-use crate::supply::SupplyBound;
-use crate::time::{Duration, Instant, Service};
-
 use std::cmp::Ordering;
 
 use thiserror::Error;
+
+use crate::supply::SupplyBound;
+use crate::time::{Duration, Instant, Service};
 
 /// Error type returned when a fixed point search fails.
 #[derive(Debug, Error, Copy, Clone, Eq, PartialEq, PartialOrd)]
@@ -103,7 +102,10 @@ where
 /// Given a sequence of [SearchResult]s, either return the maximum
 /// finite result (if no divergence errors occurred) or propagate the
 /// first error encountered.
-fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> SearchResult {
+///
+/// This utility function is useful when analyzing a set of offsets
+/// that must be considered as part of a response-time analysis.
+pub fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> SearchResult {
     rta_per_offset
         .max_by(|a, b| {
             // propagate any errors values
@@ -121,56 +123,4 @@ fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> Sear
         // If we have no result at all, there are no demand steps, so the
         // response-time is trivially zero.
         .unwrap_or(Ok(0))
-}
-
-/// Try to find a response-time bound for a given processor supply
-/// model and a given processor demand model.
-///
-/// The search for a fixed point will be aborted if the given
-/// divergence threshold indicated by `limit` is reached.
-///
-/// The fixed-point search relies on three relevant characterizations
-/// of processor demand:
-/// - `demand` is demand model from which all points are inferred at
-///   which the demand curve exhibits "steps".
-/// - `bw_demand_bound` is the right-hand side of the fixed-point
-///   equation describing the maximum busy-window length, i.e., the
-///   demand of "everything".
-/// - `offset_demand_bound` is the right-hand side of the fixed-point
-///   equation describing the response time for a given offset.
-pub fn bound_response_time<SBF, RBF, F, G>(
-    supply: &SBF,
-    demand: &RBF,
-    bw_demand_bound: F,
-    offset_demand_bound: G,
-    limit: Duration,
-) -> SearchResult
-where
-    SBF: SupplyBound + ?Sized,
-    RBF: RequestBound + ?Sized,
-    F: Fn(Duration) -> Service,
-    G: Fn(Instant, Duration) -> Service,
-{
-    // find a bound on the maximum busy-window
-    let max_bw = search(supply, limit, bw_demand_bound)?;
-    // Look at all points where the demand curve "steps".
-    // Note that steps_iter() yields interval lengths, but we are interested in
-    // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
-    // to obtain the offset.
-    let offsets = demand
-        .steps_iter()
-        .map(|x| x - 1)
-        .take_while(|x| *x <= max_bw);
-    // for each relevant offset in the search space,
-    let rta_bounds = offsets.map(|offset| {
-        let rhs = |delta| offset_demand_bound(offset, delta);
-        let rta = search_with_offset(supply, offset, limit, &rhs);
-        // In debug mode, compare against the brute-force solution.
-        debug_assert_eq!(
-            brute_force_search_with_offset(supply, offset, limit, &rhs),
-            rta
-        );
-        rta
-    });
-    max_response_time(rta_bounds)
 }

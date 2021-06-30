@@ -739,7 +739,7 @@ mod tests {
         let total2: Duration = chain2_wcet.iter().sum();
         let total3: Duration = chain3_wcet.iter().sum();
 
-        let all_chains = demand::Aggregate::new(vec![
+        let rbfs = vec![
             Box::new(demand::RBF {
                 wcet: wcet::Scalar::from(total1),
                 arrival_bound: arrival::Periodic { period: 25 },
@@ -758,13 +758,29 @@ mod tests {
                     jitter: 25,
                 },
             }),
-        ]);
+        ];
 
-        let last_cb = *chain1_wcet.iter().last().unwrap();
+        let other_chains = demand::Slice::of(&rbfs[1..]);
+        let chain_ua = &rbfs[0];
+        let chain_prefix = demand::RBF {
+            wcet: wcet::Scalar::from(1 + 2),
+            arrival_bound: arrival::Periodic { period: 25 },
+        };
+        let chain_last_callback = demand::RBF {
+            wcet: wcet::Scalar::from(3),
+            arrival_bound: arrival::Periodic { period: 25 },
+        };
 
-        let result = ros2::rta_processing_chain(&sbf, &all_chains, last_cb, 1000);
+        let result = ros2::rta_processing_chain(
+            &sbf,
+            &chain_last_callback,
+            &chain_prefix,
+            &chain_ua,
+            &other_chains,
+            1000,
+        );
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), 152);
+        assert_eq!(result.unwrap(), 72);
     }
 
     #[test]
@@ -818,51 +834,6 @@ mod tests {
             ros2::rta_polling_point_callback(&sbf, &chain1_suffix, &all_other_callbacks, 1000);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 72);
-    }
-
-    #[test]
-    fn ros2_chain3() {
-        let sbf = supply::Periodic {
-            period: 5,
-            budget: 3,
-        };
-
-        let chain1_wcet: Vec<Duration> = vec![1, 2, 3];
-        let chain2_wcet = vec![1, 1, 1];
-        let chain3_wcet = vec![2, 1];
-
-        let total2: Duration = chain2_wcet.iter().sum();
-        let total3: Duration = chain3_wcet.iter().sum();
-
-        let chain1_arrivals = arrival::Periodic { period: 25 };
-
-        let other_chains = demand::Aggregate::new(vec![
-            Box::new(demand::RBF {
-                wcet: wcet::Scalar::from(total2),
-                arrival_bound: arrival::Sporadic {
-                    min_inter_arrival: 20,
-                    jitter: 25,
-                },
-            }),
-            Box::new(demand::RBF {
-                wcet: wcet::Scalar::from(total3),
-                arrival_bound: arrival::Sporadic {
-                    min_inter_arrival: 20,
-                    jitter: 25,
-                },
-            }),
-        ]);
-
-        let result = ros2::rta_processing_chain_window_aware(
-            &sbf,
-            chain1_wcet.iter().copied(),
-            &chain1_arrivals,
-            &other_chains,
-            1000,
-        );
-        assert!(result.is_ok());
-        // dbg!(result);
-        // assert_eq!(result.unwrap(), 72);
     }
 
     #[test]
