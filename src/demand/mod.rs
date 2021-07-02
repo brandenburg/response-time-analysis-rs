@@ -25,8 +25,12 @@ pub trait RequestBound {
     /// Expose the smallest WCET of any job encountered in an interval of length `delta`.
     fn least_wcet_in_interval(&self, delta: Duration) -> Service;
 
-    /// Yield an iterator over the points (i.e., values of `delta` in
+    /// Yield an iterator over the interval lengths (i.e., values of `delta` in
     /// [RequestBound::service_needed]) at which the cumulative demand changes.
+    ///
+    /// More precisely, this iterator yields every value of `delta` such that:
+    ///
+    /// `self.service_needed(delta - 1) < self.service_needed(delta)`.
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a>;
 
     /// Expose an iterator over the individual costs that comprise the overall demand.

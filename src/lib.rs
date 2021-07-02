@@ -664,6 +664,28 @@ mod tests {
         assert_eq!(result2.unwrap(), 20);
     }
 
+    fn brute_force_rbf_steps<'a, T: RequestBound>(
+        rbf: &'a T,
+    ) -> Box<dyn Iterator<Item = Duration> + 'a> {
+        Box::new((1..).filter(move |delta| {
+            let n = rbf.service_needed(*delta);
+            let m = rbf.service_needed(*delta - 1);
+            assert!(m <= n, "demand must be monotonic");
+            m < n
+        }))
+    }
+
+    fn check_rbf_steps<T: RequestBound>(rbf: &T, horizon: Duration) {
+        let bf_steps = brute_force_rbf_steps(rbf);
+        let steps = rbf.steps_iter();
+        for (bf_step, step) in bf_steps.zip(steps) {
+            assert_eq!(bf_step, step);
+            if bf_step > horizon {
+                break;
+            }
+        }
+    }
+
     #[test]
     fn ros2_timer_sporadic() {
         let sbf = supply::Periodic {
@@ -689,6 +711,9 @@ mod tests {
                 },
             }),
         ];
+
+        check_rbf_steps(&interference[0], 10005);
+        check_rbf_steps(&interference[1], 10005);
 
         let result = ros2::rta_timer(&sbf, &rbf, &demand::Slice::of(&interference[0..2]), 0, 100);
         assert!(result.is_ok());
@@ -717,6 +742,9 @@ mod tests {
                 arrival_bound: arrival::Periodic { period: 20 },
             },
         ]);
+
+        check_rbf_steps(&rbf, 10005);
+        check_rbf_steps(&interference, 10005);
 
         let result = ros2::rta_polling_point_callback(&sbf, &rbf, &interference, 100);
         assert!(result.is_ok());
@@ -760,6 +788,10 @@ mod tests {
             }),
         ];
 
+        check_rbf_steps(&rbfs[0], 10005);
+        check_rbf_steps(&rbfs[1], 10005);
+        check_rbf_steps(&rbfs[2], 10005);
+
         let other_chains = demand::Slice::of(&rbfs[1..]);
         let chain_ua = &rbfs[0];
         let chain_prefix = demand::RBF {
@@ -770,6 +802,9 @@ mod tests {
             wcet: wcet::Scalar::from(3),
             arrival_bound: arrival::Periodic { period: 25 },
         };
+
+        check_rbf_steps(&other_chains, 10005);
+        check_rbf_steps(&chain_prefix, 10005);
 
         let result = ros2::rta_processing_chain(
             &sbf,
@@ -829,6 +864,9 @@ mod tests {
             Box::new(other_chains) as Box<dyn RequestBound>,
             Box::new(chain1_prefix),
         ]);
+
+        check_rbf_steps(&all_other_callbacks, 10005);
+        check_rbf_steps(&chain1_suffix, 10005);
 
         let result =
             ros2::rta_polling_point_callback(&sbf, &chain1_suffix, &all_other_callbacks, 1000);
