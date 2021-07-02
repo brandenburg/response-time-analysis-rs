@@ -1,5 +1,5 @@
 use super::SupplyBound;
-use crate::time::Duration;
+use crate::time::{Duration, Service};
 
 /// A trivial model to represent a 100%-available, dedicated processor.
 ///
@@ -10,11 +10,11 @@ pub struct Dedicated {
 }
 
 impl SupplyBound for Dedicated {
-    fn provided_service(&self, delta: Duration) -> Duration {
-        delta
+    fn provided_service(&self, delta: Duration) -> Service {
+        Service::from(delta)
     }
 
-    fn service_time(&self, demand: Duration) -> Duration {
-        demand
+    fn service_time(&self, demand: Service) -> Duration {
+        Duration::from(demand)
     }
 }

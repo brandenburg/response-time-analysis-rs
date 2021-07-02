@@ -40,7 +40,7 @@ impl<'a, AB: ArrivalBound> Iterator for DeltaMinIterator<'a, AB> {
     fn next(&mut self) -> Option<Self::Item> {
         self.advance();
         if let Some(delta) = self.next_step {
-            let dmin = Some((self.next_count, delta - 1));
+            let dmin = Some((self.next_count, delta - Duration::from(1)));
             self.next_count += 1;
             dmin
         } else {
@@ -60,7 +60,7 @@ pub fn delta_min_iter<'a>(
     ab: &'a impl ArrivalBound,
 ) -> impl Iterator<Item = (usize, Duration)> + 'a {
     // first the two default cases for zero and one jobs
-    iter::once((0, 0))
-        .chain(iter::once((1, 0)))
+    iter::once((0, Duration::from(0)))
+        .chain(iter::once((1, Duration::from(0))))
         .chain(DeltaMinIterator::new(ab))
 }

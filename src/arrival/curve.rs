@@ -4,7 +4,7 @@ use std::iter::{self, FromIterator};
 use std::rc::Rc;
 
 use super::{divide_with_ceil, ArrivalBound, Periodic, Propagated, Sporadic};
-use crate::time::{Duration, Instant};
+use crate::time::{Duration, Offset};
 
 /// An arrival curve (also commonly called an "upper event arrival
 /// curve" *η+*) that can describe arbitrarily bursty sporadic
@@ -48,50 +48,51 @@ impl Curve {
         let mut v = Vec::with_capacity(n);
         for i in 0..n {
             let periods = i as u64 + 1;
-            if s.jitter >= periods * s.min_inter_arrival {
-                v.push(0)
+            if s.jitter >= s.min_inter_arrival * periods {
+                v.push(Duration::zero())
             } else {
-                v.push(periods * s.min_inter_arrival - s.jitter)
+                v.push(s.min_inter_arrival * periods - s.jitter)
             }
         }
         Curve { min_distance: v }
     }
 
     /// Obtain an arrival curve by inferring a delta-min prefix from
-    /// a given trace of arrival events..
+    /// a given trace of arrival events, expressed as the offset of
+    /// the event from a reference time zero.
     ///
     /// The resultant delta-min vector will consist of `prefix_jobs`
     /// entries (if there are a sufficient number of arrivals in the
     /// trace).
     pub fn from_trace<'a>(
-        arrival_times: impl Iterator<Item = &'a Instant>,
+        arrival_times: impl Iterator<Item = Offset>,
         prefix_jobs: usize,
     ) -> Curve {
-        let mut d = Vec::with_capacity(prefix_jobs);
-        let mut window: VecDeque<u64> = VecDeque::with_capacity(prefix_jobs + 1);
+        let mut d: Vec<Duration> = Vec::with_capacity(prefix_jobs);
+        let mut window: VecDeque<Offset> = VecDeque::with_capacity(prefix_jobs + 1);
 
         // consider all job arrivals in the trace
         for t in arrival_times {
             // sanity check: the arrival times must be monotonic
-            assert!(t >= window.back().unwrap_or(&t));
+            assert!(t >= *(window.back().unwrap_or(&t)));
             // look at all arrival times in the sliding window, in order
             // from most recent to oldest
             for (i, v) in window.iter().rev().enumerate() {
                 // Compute the separation from the current arrival t to the arrival
                 // of the (i + 1)-th preceding job.
                 // So if i=0, we are looking at two adjacent jobs.
-                let observed_gap = t - v;
+                let observed_gap = v.distance_to(t);
                 if d.len() <= i {
                     // we have not yet seen (i + 2) jobs in a row -> first sample
                     d.push(observed_gap)
                 } else {
-                    // update belief if we have seen something of less separation
-                    // than previously
+                    // update belief if we have seen two events with
+                    // less separation than previously observed
                     d[i] = d[i].min(observed_gap)
                 }
             }
             // add arrival time to sliding window
-            window.push_back(*t);
+            window.push_back(t);
             // trim sliding window if necessary
             if window.len() > prefix_jobs {
                 window.pop_front();
@@ -177,7 +178,7 @@ impl Curve {
             // account for the fact that we store distances only for 2+ jobs
             self.min_distance[(n - 2).min(self.min_distance.len() - 1)]
         } else {
-            0
+            Duration::zero()
         }
     }
 }
@@ -198,7 +199,7 @@ impl FromIterator<Duration> for Curve {
 
 impl ArrivalBound for Curve {
     fn number_arrivals(&self, delta: Duration) -> usize {
-        if delta > 0 {
+        if delta.is_non_zero() {
             // first, resolve long delta by super-additivity of arrival curves
             let prefix = delta / self.largest_known_distance();
             let prefix_jobs = prefix as usize * self.jobs_in_largest_known_distance();
@@ -206,7 +207,7 @@ impl ArrivalBound for Curve {
             if tail > self.min_job_separation() {
                 prefix_jobs + self.lookup_arrivals(tail) as usize
             } else {
-                prefix_jobs + (tail > 0) as usize
+                prefix_jobs + tail.is_non_zero() as usize
             }
         } else {
             0
@@ -214,15 +215,15 @@ impl ArrivalBound for Curve {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        let diffs: Vec<_> = iter::once(0)
+        let diffs: Vec<_> = iter::once(Duration::zero())
             .chain(self.min_distance.iter().copied())
             .zip(self.min_distance.iter().copied())
             .map(|(a, b)| b - a)
-            .filter(|d| *d > 0)
+            .filter(|d| d.is_non_zero())
             .collect();
 
         struct StepsIter {
-            sum: Instant,
+            sum: Duration,
             step_sizes: Vec<Duration>,
             idx: usize,
         }
@@ -232,14 +233,14 @@ impl ArrivalBound for Curve {
 
             fn next(&mut self) -> Option<Self::Item> {
                 let val = self.sum;
-                self.sum += self.step_sizes[self.idx];
+                self.sum = self.sum + self.step_sizes[self.idx];
                 self.idx = (self.idx + 1) % self.step_sizes.len();
                 Some(val)
             }
         }
 
         Box::new(StepsIter {
-            sum: 1,
+            sum: Duration::from(1),
             step_sizes: diffs,
             idx: 0,
         })
@@ -267,7 +268,7 @@ impl From<Sporadic> for Curve {
         // By default, unroll until the jitter jobs are no more than 10% of the
         // jobs of the jobs in the unrolled interval, and until for at least 500 jobs.
         let n = 500.max(jitter_jobs * 10);
-        Curve::unroll_sporadic(&s, n * s.min_inter_arrival)
+        Curve::unroll_sporadic(&s, s.min_inter_arrival * n)
     }
 }
 
@@ -290,20 +291,20 @@ impl ExtrapolatingCurve {
 
 impl ArrivalBound for ExtrapolatingCurve {
     fn number_arrivals(&self, delta: Duration) -> usize {
-        if delta == 0 {
+        if delta.is_zero() {
             // special case: delta=0 always yields 0
             0
         } else {
             // extrapolate up to the requested duration
             let mut curve = self.prefix.borrow_mut();
-            curve.extrapolate(delta + 1);
+            curve.extrapolate(delta + Duration::from(1));
             curve.number_arrivals(delta)
         }
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         struct StepsIter<'a> {
-            dist: Instant,
+            dist: Duration,
             curve: &'a ExtrapolatingCurve,
             njobs: usize,
         }
@@ -323,7 +324,7 @@ impl ArrivalBound for ExtrapolatingCurve {
             type Item = Duration;
 
             fn next(&mut self) -> Option<Self::Item> {
-                let val = 1 + self.dist;
+                let val = Duration::from(1) + self.dist;
                 self.advance();
                 Some(val)
             }
@@ -332,7 +333,7 @@ impl ArrivalBound for ExtrapolatingCurve {
         let prefix = self.prefix.borrow();
         if prefix.can_extrapolate() {
             Box::new(StepsIter {
-                dist: 0,
+                dist: Duration::zero(),
                 curve: self,
                 njobs: 0,
             })
@@ -341,7 +342,7 @@ impl ArrivalBound for ExtrapolatingCurve {
             // so just return the periodic process implied by the single-value
             // dmin function
             let period = prefix.min_distance(2);
-            Box::new((0..).map(move |j| j * period + 1))
+            Box::new((0..).map(move |j| period * j + Duration::from(1)))
         }
     }
 

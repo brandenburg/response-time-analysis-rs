@@ -28,7 +28,7 @@ impl<T: ArrivalBound + Clone> Propagated<T> {
 
 impl<T: ArrivalBound + Clone + 'static> ArrivalBound for Propagated<T> {
     fn number_arrivals(&self, delta: Duration) -> usize {
-        if delta > 0 {
+        if delta.is_non_zero() {
             self.input_event_model
                 .number_arrivals(delta + self.response_time_jitter)
         } else {
@@ -38,11 +38,11 @@ impl<T: ArrivalBound + Clone + 'static> ArrivalBound for Propagated<T> {
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(
-            iter::once(1).chain(
+            iter::once(Duration::from(1)).chain(
                 // shift the steps of the input event model earlier by the jitter amount
                 self.input_event_model
                     .steps_iter()
-                    .filter(move |x| *x > self.response_time_jitter + 1)
+                    .filter(move |x| *x > self.response_time_jitter + Duration::from(1))
                     .map(move |x| x - self.response_time_jitter),
             ),
         )

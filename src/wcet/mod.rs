@@ -15,7 +15,10 @@ pub trait JobCostModel {
     /// Model: yield the WCET of the job with the least WCET among
     /// any sequence of `n` consecutive jobs.
     fn least_wcet(&self, n: usize) -> Service {
-        self.job_cost_iter().take(n).min().unwrap_or(0)
+        self.job_cost_iter()
+            .take(n)
+            .min()
+            .unwrap_or(Service::none())
     }
 
     /// Model: iterate the maximum WCETs of any sequence of consecutive jobs.

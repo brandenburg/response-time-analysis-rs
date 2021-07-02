@@ -1,7 +1,7 @@
 use crate::demand::RequestBound;
 use crate::fixed_point::{self, max_response_time, SearchResult};
 use crate::supply::SupplyBound;
-use crate::time::{Duration, Instant, Service};
+use crate::time::{Duration, Offset, Service};
 
 /// Bound the response time of an event source for a given supply and
 /// demand model, using the analysis proposed by
@@ -24,7 +24,7 @@ where
     // right-hand side of Lemma 6 --- used to bound the max. busy-window length
     let rhs_busy_window = |delta| demand.service_needed(delta);
     // right-hand side of Lemma 1 --- used to bound the demand for a given offset
-    let rhs = |offset, _response| demand.service_needed(offset + 1);
+    let rhs = |offset: Offset, _response| demand.service_needed(offset.closed_since_time_zero());
 
     // solve the fixed point for all steps of the demand curve up to
     // the maximum busy-window length and return the maximum (or divergence)
@@ -63,16 +63,18 @@ where
         own_demand.service_needed(delta) + blocking_bound + interfering_demand.service_needed(delta)
     };
     // right-hand side of Lemma 3
-    let rhs = |offset, response| {
+    let rhs = |offset: Offset, response: Duration| {
+        // length of the prefix interval before the offset
+        let prefix = offset.since_time_zero();
         // cost of timer callback
-        let own_wcet = own_demand.least_wcet_in_interval(offset + response);
+        let own_wcet = Duration::from(own_demand.least_wcet_in_interval(prefix + response));
         // determine timeframe during which other callbacks can delay us
         let interference_interval = if response > own_wcet {
-            offset + response - own_wcet + 1
+            prefix + response - own_wcet + Duration::epsilon()
         } else {
-            offset + 1
+            prefix + Duration::epsilon()
         };
-        own_demand.service_needed(offset + 1)
+        own_demand.service_needed(prefix + Duration::epsilon())
             + interfering_demand.service_needed(interference_interval)
             + blocking_bound
     };
@@ -108,16 +110,18 @@ where
     let rhs_bw =
         |delta| own_demand.service_needed(delta) + interfering_demand.service_needed(delta);
     // right-hand side of Eq (6), based on Lemmas 4 and 5
-    let rhs = |offset, response| {
+    let rhs = |offset: Offset, response: Duration| {
+        // length of the prefix interval before the offset
+        let prefix = offset.since_time_zero();
         // cost of pp-based callback under analysis
-        let own_wcet = own_demand.least_wcet_in_interval(offset + response);
+        let own_wcet = Duration::from(own_demand.least_wcet_in_interval(prefix + response));
         // determine timeframe during which other callbacks can delay us
         let interference_interval = if response > own_wcet {
-            offset + response - own_wcet + 1
+            prefix + response - own_wcet + Duration::epsilon()
         } else {
-            offset + 1
+            prefix + Duration::epsilon()
         };
-        own_demand.service_needed(offset + 1)
+        own_demand.service_needed(prefix + Duration::epsilon())
             + interfering_demand.service_needed(interference_interval)
     };
     bound_response_time(supply, own_demand, rhs_bw, rhs, limit)
@@ -167,14 +171,16 @@ where
     };
 
     // right-hand side of Lemma 8
-    let rhs = |offset, response| {
-        let own_demand = chain_last_callback.service_needed(offset + 1);
-        let own_wcet = chain_last_callback.least_wcet_in_interval(offset + response);
+    let rhs = |offset: Offset, response: Duration| {
+        let prefix = offset.since_time_zero();
+        let own_demand = chain_last_callback.service_needed(prefix + Duration::epsilon());
+        let own_wcet =
+            Duration::from(chain_last_callback.least_wcet_in_interval(prefix + response));
         // determine timeframe during which other callbacks can delay us
         let interference_interval = if response > own_wcet {
-            offset + response - own_wcet + 1
+            prefix + response - own_wcet + Duration::epsilon()
         } else {
-            offset + 1
+            prefix + Duration::epsilon()
         };
         let other_demand = other_chains.service_needed(interference_interval);
         let self_interference = chain_prefix.service_needed(interference_interval);
@@ -211,19 +217,19 @@ where
     SBF: SupplyBound + ?Sized,
     RBF: RequestBound + ?Sized,
     F: Fn(Duration) -> Service,
-    G: Fn(Instant, Duration) -> Service,
+    G: Fn(Offset, Duration) -> Service,
 {
     // find a bound on the maximum busy-window
     let max_bw = fixed_point::search(supply, limit, bw_demand_bound)?;
     // Consider the search space of relevant offsets based on Lemma 7.
     // That is, we have to look at all points where the demand curve "steps".
-    // Note that steps_iter() yields interval lengths, but we are interested in
-    // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
-    // to obtain the offset.
     let offsets = demand
         .steps_iter()
-        .map(|x| x - 1)
-        .take_while(|x| *x <= max_bw);
+        // Note that steps_iter() yields interval lengths, but we are interested in
+        // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
+        // to obtain the offset.
+        .map(|x| Offset::closed_from_time_zero(x))
+        .take_while(|x| *x <= Offset::from_time_zero(max_bw));
     // for each relevant offset in the search space,
     let rta_bounds = offsets.map(|offset| {
         let rhs = |delta| offset_demand_bound(offset, delta);

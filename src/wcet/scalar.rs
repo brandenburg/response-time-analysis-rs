@@ -25,14 +25,14 @@ impl From<Service> for Scalar {
 
 impl JobCostModel for Scalar {
     fn cost_of_jobs(&self, n: usize) -> Service {
-        n as Service * self.wcet
+        self.wcet * n as u64
     }
 
     fn least_wcet(&self, n: usize) -> Service {
         if n > 0 {
             self.wcet
         } else {
-            0
+            Service::none()
         }
     }
 

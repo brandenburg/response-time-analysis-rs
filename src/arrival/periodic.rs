@@ -14,7 +14,7 @@ impl ArrivalBound for Periodic {
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new((0..).map(move |j| j * self.period + 1))
+        Box::new((0..).map(move |j| self.period * j + Duration::from(1)))
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {

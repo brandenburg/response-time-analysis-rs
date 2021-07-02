@@ -12,14 +12,14 @@ pub trait SupplyBound {
     /// Bound the maximum interval length during which the supply
     /// provides at least `demand` amount of service.
     fn service_time(&self, demand: Service) -> Duration {
-        let mut t = demand;
+        let mut t = Duration::from(demand);
         loop {
             let supply = self.provided_service(t);
             if supply >= demand {
                 return t;
             }
             // jump ahead by how much is still missing
-            t += demand - supply;
+            t += Duration::from(demand - supply);
         }
     }
 }

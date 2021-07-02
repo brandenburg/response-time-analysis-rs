@@ -41,19 +41,19 @@ impl JobCostModel for Curve {
             let x = n / self.wcet_of_n_jobs.len();
             let y = n % self.wcet_of_n_jobs.len();
             let prefix = if x > 0 {
-                x as Service * self.wcet_of_n_jobs[self.wcet_of_n_jobs.len() - 1]
+                self.wcet_of_n_jobs[self.wcet_of_n_jobs.len() - 1] * x as u64
             } else {
-                0
+                Service::none()
             };
             let suffix = if y > 0 {
                 // -1 to account for zero-based indexing: offset 0 holds cost of 1 job
                 self.wcet_of_n_jobs[y - 1]
             } else {
-                0
+                Service::none()
             };
             prefix + suffix
         } else {
-            0
+            Service::none()
         }
     }
 
@@ -69,29 +69,29 @@ impl JobCostModel for Curve {
             }
             least
         } else {
-            0
+            Service::none()
         }
     }
 }
 
 impl Curve {
-    pub fn from_trace<'a>(job_costs: impl Iterator<Item = &'a Service>, max_n: usize) -> Curve {
+    pub fn from_trace<'a>(job_costs: impl Iterator<Item = Service>, max_n: usize) -> Curve {
         let mut cost_of = Vec::with_capacity(max_n);
-        let mut window: VecDeque<u64> = VecDeque::with_capacity(max_n + 1);
+        let mut window: VecDeque<Service> = VecDeque::with_capacity(max_n + 1);
 
         // consider all observed costs in the trace
         for c in job_costs {
             // add job cost to sliding window
-            window.push_back(*c);
+            window.push_back(c);
             // trim sliding window if necessary
             if window.len() > max_n {
                 window.pop_front();
             }
 
             // look at all job costs in the sliding window and keep track of total cost
-            let mut total_cost = 0;
+            let mut total_cost = Service::none();
             for (i, k) in window.iter().enumerate() {
-                total_cost += k;
+                total_cost += *k;
                 if cost_of.len() <= i {
                     // we have not yet seen (i + 1) costs in a row -> first sample
                     cost_of.push(total_cost)

@@ -3,14 +3,14 @@ use std::cmp::Ordering;
 use thiserror::Error;
 
 use crate::supply::SupplyBound;
-use crate::time::{Duration, Instant, Service};
+use crate::time::{Duration, Offset, Service, Time};
 
 /// Error type returned when a fixed point search fails.
 #[derive(Debug, Error, Copy, Clone, Eq, PartialEq, PartialOrd)]
 pub enum SearchFailure {
     /// No fixed point found below the given divergence threshold.
     #[error("no fixed point less than {limit} found for offset {offset}")]
-    DivergenceLimitExceeded { offset: Instant, limit: Duration },
+    DivergenceLimitExceeded { offset: Offset, limit: Duration },
 }
 
 pub type SearchResult = Result<Duration, SearchFailure>;
@@ -20,7 +20,7 @@ pub type SearchResult = Result<Duration, SearchFailure>;
 /// window.
 pub fn search_with_offset<SBF, RHS>(
     supply: &SBF,
-    offset: Instant,
+    offset: Offset,
     divergence_limit: Duration,
     workload: &RHS,
 ) -> SearchResult
@@ -28,10 +28,11 @@ where
     SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Service,
 {
-    let mut assumed_response_time = 1;
+    let mut assumed_response_time = Duration::from(1);
     while assumed_response_time <= divergence_limit {
         let demand = workload(assumed_response_time);
-        let response_time_bound = supply.service_time(demand) - offset;
+        let demand_met = Offset::from_time_zero(supply.service_time(demand));
+        let response_time_bound = offset.distance_to(demand_met);
         if response_time_bound <= assumed_response_time {
             // we have converged
             return Ok(response_time_bound);
@@ -53,7 +54,7 @@ where
 #[cfg(debug_assertions)]
 fn brute_force_search_with_offset<SBF, RHS>(
     supply: &SBF,
-    offset: Instant,
+    offset: Offset,
     divergence_limit: Duration,
     workload: &RHS,
 ) -> SearchResult
@@ -61,14 +62,15 @@ where
     SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Service,
 {
-    for r in 1..=divergence_limit {
-        let lhs = supply.provided_service(offset + r);
-        let rhs = workload(r);
+    for r in 1..=Time::from(divergence_limit) {
+        let assumed_response_time = Duration::from(r);
+        let lhs = supply.provided_service(offset.since_time_zero() + assumed_response_time);
+        let rhs = workload(assumed_response_time);
         // corner case: zero demand is trivially satisfied immediately
-        if rhs == 0 {
-            return Ok(0);
+        if rhs.is_none() {
+            return Ok(Duration::zero());
         } else if lhs == rhs {
-            return Ok(r);
+            return Ok(assumed_response_time);
         }
     }
     Err(SearchFailure::DivergenceLimitExceeded {
@@ -89,11 +91,11 @@ where
     SBF: SupplyBound + ?Sized,
     RHS: Fn(Duration) -> Service,
 {
-    let bw = search_with_offset(supply, 0, divergence_limit, &workload_bound);
+    let bw = search_with_offset(supply, Offset::from(0), divergence_limit, &workload_bound);
     // In debug mode, compare against the brute-force solution.
     #[cfg(debug_assertions)]
     debug_assert_eq!(
-        brute_force_search_with_offset(supply, 0, divergence_limit, &workload_bound),
+        brute_force_search_with_offset(supply, Offset::from(0), divergence_limit, &workload_bound),
         bw
     );
     bw
@@ -122,5 +124,5 @@ pub fn max_response_time(rta_per_offset: impl Iterator<Item = SearchResult>) -> 
         })
         // If we have no result at all, there are no demand steps, so the
         // response-time is trivially zero.
-        .unwrap_or(Ok(0))
+        .unwrap_or(Ok(Duration::zero()))
 }

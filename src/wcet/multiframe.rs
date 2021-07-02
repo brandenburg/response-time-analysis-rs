@@ -23,6 +23,11 @@ impl JobCostModel for Multiframe {
     }
 
     fn least_wcet(&self, n: usize) -> Service {
-        self.costs.iter().take(n).copied().min().unwrap_or(0)
+        self.costs
+            .iter()
+            .take(n)
+            .copied()
+            .min()
+            .unwrap_or(Service::none())
     }
 }

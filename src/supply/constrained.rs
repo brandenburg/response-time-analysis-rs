@@ -1,5 +1,5 @@
 use super::SupplyBound;
-use crate::time::Duration;
+use crate::time::{Duration, Service};
 
 /// A periodic resource with reduced jitter.
 ///
@@ -15,15 +15,15 @@ use crate::time::Duration;
 #[derive(Debug, Clone, Copy)]
 pub struct Constrained {
     pub period: Duration,
-    pub budget: Duration,
+    pub budget: Service,
     pub deadline: Duration,
 }
 
 impl Constrained {
     /// Construct a new constrained periodic resource model such that
     /// `budget <= deadline <= period`.
-    pub fn new(budget: Duration, deadline: Duration, period: Duration) -> Self {
-        assert!(budget <= deadline);
+    pub fn new(budget: Service, deadline: Duration, period: Duration) -> Self {
+        assert!(Duration::from(budget) <= deadline);
         assert!(deadline <= period);
         Constrained {
             period,
@@ -34,37 +34,41 @@ impl Constrained {
 }
 
 impl SupplyBound for Constrained {
-    fn provided_service(&self, delta: Duration) -> Duration {
-        let shift = self.period - self.budget;
+    fn provided_service(&self, delta: Duration) -> Service {
+        let budget = Duration::from(self.budget);
+        let shift = self.period - budget;
         if shift > delta {
-            return 0;
+            return Service::none();
         }
         // implicit floor due to integer division
         let full_periods = (delta - shift) / self.period;
-        let x = shift + full_periods * self.period + self.deadline - self.budget;
+        let x = shift + self.period * full_periods + self.deadline - budget;
         let fractional_period = if x < delta {
-            self.budget.min(delta - x)
+            self.budget.min(Service::from(delta - x))
         } else {
-            0
+            Service::none()
         };
 
-        full_periods * self.budget + fractional_period
+        self.budget * full_periods + fractional_period
     }
 
-    fn service_time(&self, demand: Duration) -> Duration {
-        if demand == 0 {
-            return 0;
+    fn service_time(&self, demand: Service) -> Duration {
+        if demand.is_none() {
+            return Duration::zero();
         }
 
+        let budget = Duration::from(self.budget);
+        let demand = Duration::from(demand);
+
         // implicit floor due to integer division
-        let full_periods = demand / self.budget;
-        let full_budget = full_periods * self.budget;
+        let full_periods = demand / budget;
+        let full_budget = budget * full_periods;
         let fractional_budget = if full_budget < demand {
-            demand - full_budget + self.period - self.budget
+            demand - full_budget + self.period - budget
         } else {
-            0
+            Duration::zero()
         };
 
-        self.deadline - self.budget + full_periods * self.period + fractional_budget
+        self.deadline - budget + self.period * full_periods + fractional_budget
     }
 }

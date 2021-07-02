@@ -1,5 +1,5 @@
 use super::{ArrivalBound, Propagated};
-use crate::time::Duration;
+use crate::time::{Duration, Time};
 
 /// Model of a [Poisson](https://en.wikipedia.org/wiki/Poisson_distribution) arrival process.
 #[derive(Copy, Clone, Debug)]
@@ -15,7 +15,7 @@ impl Poisson {
         for x in 1..(njobs + 1) {
             denominator *= x as f64;
         }
-        let mean = delta as f64 * self.rate;
+        let mean = Time::from(delta) as f64 * self.rate;
         let mut numerator = (-mean).exp(); // e^(- rate * delta)
         numerator *= mean.powi(njobs as i32); // (rate * delta)**k
         numerator / denominator
@@ -58,7 +58,7 @@ pub struct ApproximatedPoisson {
 impl ArrivalBound for ApproximatedPoisson {
     /// Bound the number of jobs released in any interval of length `delta` with probability `1 - epsilon`.
     fn number_arrivals(&self, delta: Duration) -> usize {
-        if delta > 0 {
+        if delta.is_non_zero() {
             let mut cumulative_prob = 0.0;
             let mut njobs = 0;
             loop {

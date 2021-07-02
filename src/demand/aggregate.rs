@@ -31,7 +31,7 @@ impl<T: RequestBound> RequestBound for Aggregate<T> {
             .iter()
             .map(|rbf| rbf.least_wcet_in_interval(delta))
             .min()
-            .unwrap_or(0)
+            .unwrap_or(Service::none())
     }
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {

@@ -29,12 +29,12 @@ pub trait ArrivalBound {
     /// Avoid if performance is at all important.
     fn brute_force_steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         let (a1, a2) = (0..)
-            .map(move |delta| (delta, self.number_arrivals(delta)))
+            .map(move |delta| (delta, self.number_arrivals(Duration::from(delta))))
             .tee();
         Box::new(
             a1.zip(a2.skip(1))
                 .filter(|((_, njobs1), (_, njobs2))| njobs1 != njobs2)
-                .map(|((_, _), (d2, _))| d2),
+                .map(|((_, _), (d2, _))| Duration::from(d2)),
         )
     }
 
@@ -63,6 +63,6 @@ pub use propagated::Propagated;
 pub use sporadic::Sporadic;
 
 // common helper function
-fn divide_with_ceil(a: u64, b: u64) -> u64 {
-    a / b + if a % b > 0 { 1 } else { 0 }
+fn divide_with_ceil(a: Duration, b: Duration) -> u64 {
+    a / b + (a % b > Duration::from(0)) as u64
 }

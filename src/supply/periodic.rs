@@ -15,7 +15,7 @@ pub struct Periodic {
 impl Periodic {
     /// Construct a new periodic supply, where `budget <= period`.
     pub fn new(budget: Service, period: Duration) -> Self {
-        assert!(budget <= period);
+        assert!(Duration::from(budget) <= period);
         Periodic { period, budget }
     }
 }
@@ -25,32 +25,40 @@ impl SupplyBound for Periodic {
         // Supply bound function of the periodic resource model,
         // as given by Shin & Lee (RTSS 2003).
 
-        let slack = self.period - self.budget;
+        let budget = Duration::from(self.budget);
+
+        let slack = self.period - budget;
         if slack > delta {
-            return 0;
+            return Service::none();
         }
         // implicit floor due to integer division
         let full_periods = (delta - slack) / self.period;
-        let x = slack + slack + full_periods * self.period;
-        let fractional_period = if x < delta { delta - x } else { 0 };
+        let x = slack + slack + self.period * full_periods;
+        let fractional_period = if x < delta {
+            Service::from(delta - x)
+        } else {
+            Service::none()
+        };
 
-        full_periods * self.budget + fractional_period
+        self.budget * full_periods + fractional_period
     }
 
     fn service_time(&self, demand: Service) -> Duration {
-        let slack = self.period - self.budget;
-
-        if demand == 0 {
-            return 0;
+        if demand.is_none() {
+            return Duration::zero();
         }
 
+        let demand = Duration::from(demand);
+        let budget = Duration::from(self.budget);
+        let slack = self.period - budget;
+
         // implicit floor due to integer division
-        let full_periods = demand / self.budget;
-        let full_budget = full_periods * self.budget;
+        let full_periods = demand / budget;
+        let full_budget = budget * full_periods;
         let fractional_budget = if full_budget < demand {
             slack + demand - full_budget
         } else {
-            0
+            Duration::zero()
         };
 
         slack + self.period * full_periods + fractional_budget

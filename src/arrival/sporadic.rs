@@ -21,7 +21,7 @@ pub struct Sporadic {
 
 impl ArrivalBound for Sporadic {
     fn number_arrivals(&self, delta: Duration) -> usize {
-        if delta > 0 {
+        if delta.is_non_zero() {
             divide_with_ceil(delta + self.jitter, self.min_inter_arrival) as usize
         } else {
             0
@@ -30,10 +30,10 @@ impl ArrivalBound for Sporadic {
 
     fn steps_iter<'a>(&'a self) -> Box<dyn Iterator<Item = Duration> + 'a> {
         Box::new(
-            iter::once(1).chain(
+            iter::once(Duration::from(1)).chain(
                 (1..)
-                    .filter(move |j| j * self.min_inter_arrival + 1 > self.jitter)
-                    .map(move |j| j * self.min_inter_arrival + 1 - self.jitter),
+                    .filter(move |j| self.min_inter_arrival * *j + Duration::from(1) > self.jitter)
+                    .map(move |j| self.min_inter_arrival * j + Duration::from(1) - self.jitter),
             ),
         )
     }
@@ -49,7 +49,7 @@ impl From<Periodic> for Sporadic {
     fn from(p: Periodic) -> Self {
         Sporadic {
             min_inter_arrival: p.period,
-            jitter: 0,
+            jitter: Duration::zero(),
         }
     }
 }
