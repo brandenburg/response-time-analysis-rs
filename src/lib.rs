@@ -908,13 +908,140 @@ mod tests {
     }
 
     #[test]
+    fn ros2_rr_subchain_analysis() {
+        // keep it simple to reason about
+        let sbf = supply::Dedicated::new();
+
+        let arrival_models: Vec<Box<dyn ArrivalBound>> = vec![
+            Box::new(arrival::Periodic::new(d(100))),
+            Box::new(arrival::Periodic::new(d(10000))),
+            Box::new(arrival::Periodic::new(d(1000))),
+        ];
+
+        let cost_models: Vec<Box<dyn JobCostModel>> = vec![
+            Box::new(wcet::Scalar::from(s(10))),
+            Box::new(wcet::Scalar::from(s(230))),
+            Box::new(wcet::Scalar::from(s(190))),
+        ];
+
+        let assumed_response_time_bounds = vec![
+            // (before polling point) + (own polling point)
+            d((10 * 10) + (190 + 230 + 10)),
+            d((10) + (10 + 190 + 230)),
+            d((10) + (10 + 230 + 190)),
+        ];
+
+        let unknown = ros2::rr::CallbackType::PolledUnknownPrio;
+
+        let callbacks = vec![
+            ros2::rr::Callback::new(
+                assumed_response_time_bounds[0],
+                &arrival_models[0],
+                &cost_models[0],
+                unknown,
+            ),
+            ros2::rr::Callback::new(
+                assumed_response_time_bounds[1],
+                &arrival_models[1],
+                &cost_models[1],
+                unknown,
+            ),
+            ros2::rr::Callback::new(
+                assumed_response_time_bounds[2],
+                &arrival_models[2],
+                &cost_models[2],
+                unknown,
+            ),
+        ];
+
+        let workload = &callbacks[..];
+
+        // single-callback "chains"
+        let sc0 = [&callbacks[0]];
+        let sc1 = [&callbacks[1]];
+        let sc2 = [&callbacks[2]];
+
+        let b0 = ros2::rr::rta_subchain(&sbf, workload, &sc0[..], d(100000))
+            .expect("no fixed point found");
+        let b1 = ros2::rr::rta_subchain(&sbf, workload, &sc1[..], d(100000))
+            .expect("no fixed point found");
+        let b2 = ros2::rr::rta_subchain(&sbf, workload, &sc2[..], d(100000))
+            .expect("no fixed point found");
+
+        assert_eq!(b0, assumed_response_time_bounds[0]);
+        assert_eq!(b1, assumed_response_time_bounds[1]);
+        assert_eq!(b2, assumed_response_time_bounds[2]);
+    }
+
+    #[test]
+    fn ros2_bw_subchain_analysis() {
+        // keep it simple to reason about
+        let sbf = supply::Dedicated::new();
+
+        let arrival_models: Vec<Box<dyn ArrivalBound>> = vec![
+            Box::new(arrival::Periodic::new(d(100))),
+            Box::new(arrival::Periodic::new(d(10000))),
+            Box::new(arrival::Periodic::new(d(1000))),
+        ];
+
+        let cost_models: Vec<Box<dyn JobCostModel>> = vec![
+            Box::new(wcet::Scalar::from(s(10))),
+            Box::new(wcet::Scalar::from(s(230))),
+            Box::new(wcet::Scalar::from(s(190))),
+        ];
+
+        let assumed_response_time_bounds = vec![
+            d(190 + 230 + 10),
+            d(3 * 10 + 190 + 230 - 1),
+            d(3 * 10 + 190 + 230 - 1),
+        ];
+
+        let unknown = ros2::rr::CallbackType::PolledUnknownPrio;
+
+        let callbacks = vec![
+            ros2::bw::Callback::new(
+                assumed_response_time_bounds[0],
+                &arrival_models[0],
+                &cost_models[0],
+                unknown,
+            ),
+            ros2::bw::Callback::new(
+                assumed_response_time_bounds[1],
+                &arrival_models[1],
+                &cost_models[1],
+                unknown,
+            ),
+            ros2::bw::Callback::new(
+                assumed_response_time_bounds[2],
+                &arrival_models[2],
+                &cost_models[2],
+                unknown,
+            ),
+        ];
+
+        let workload = &callbacks[..];
+
+        // single-callback "chains"
+        let sc0 = [&callbacks[0]];
+        let sc1 = [&callbacks[1]];
+        let sc2 = [&callbacks[2]];
+
+        let b0 = ros2::bw::rta_subchain(&sbf, workload, &sc0[..], d(100000))
+            .expect("no fixed point found");
+        let b1 = ros2::bw::rta_subchain(&sbf, workload, &sc1[..], d(100000))
+            .expect("no fixed point found");
+        let b2 = ros2::bw::rta_subchain(&sbf, workload, &sc2[..], d(100000))
+            .expect("no fixed point found");
+
+        assert_eq!(b0, assumed_response_time_bounds[0]);
+        assert_eq!(b1, assumed_response_time_bounds[1]);
+        assert_eq!(b2, assumed_response_time_bounds[2]);
+    }
+
+    #[test]
     fn curve_extrapolation() {
         let dmin: Vec<u64> = vec![1, 2, 12, 15, 18, 21];
         let mut curve = arrival::Curve::from_iter(dmin.iter().map(|t| d(*t)));
-
-        // assert_eq!(curve.number_arrivals(d(22)), 9);
-        // assert_eq!(curve.number_arrivals(d(23)), 10);
-        // assert_eq!(curve.number_arrivals(d(25)), 11);
 
         curve.extrapolate(d(500));
 
