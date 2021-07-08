@@ -9,6 +9,13 @@ pub struct Dedicated {
     // nothing to define here
 }
 
+impl Dedicated {
+    /// Construct a new dedicated processor dummy.
+    pub fn new() -> Dedicated {
+        Dedicated {}
+    }
+}
+
 impl SupplyBound for Dedicated {
     fn provided_service(&self, delta: Duration) -> Service {
         Service::from(delta)

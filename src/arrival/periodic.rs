@@ -8,6 +8,13 @@ pub struct Periodic {
     pub period: Duration,
 }
 
+impl Periodic {
+    /// Construct a new periodic arrival model.
+    pub fn new(period: Duration) -> Periodic {
+        Periodic { period }
+    }
+}
+
 impl ArrivalBound for Periodic {
     fn number_arrivals(&self, delta: Duration) -> usize {
         divide_with_ceil(delta, self.period) as usize

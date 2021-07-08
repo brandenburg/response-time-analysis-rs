@@ -19,6 +19,26 @@ pub struct Sporadic {
     pub jitter: Duration,
 }
 
+impl Sporadic {
+    /// Construct a new sporadic arrival model with the given
+    /// inter-arrival time and jitter.
+    pub fn new(min_inter_arrival: Duration, jitter: Duration) -> Sporadic {
+        Sporadic {
+            min_inter_arrival,
+            jitter,
+        }
+    }
+
+    /// Construct a new sporadic arrival model with the given
+    /// inter-arrival time and no jitter.
+    pub fn new_zero_jitter(min_inter_arrival: Duration) -> Sporadic {
+        Sporadic {
+            min_inter_arrival,
+            jitter: Duration::zero(),
+        }
+    }
+}
+
 impl ArrivalBound for Sporadic {
     fn number_arrivals(&self, delta: Duration) -> usize {
         if delta.is_non_zero() {
@@ -47,9 +67,6 @@ impl ArrivalBound for Sporadic {
 
 impl From<Periodic> for Sporadic {
     fn from(p: Periodic) -> Self {
-        Sporadic {
-            min_inter_arrival: p.period,
-            jitter: Duration::zero(),
-        }
+        Sporadic::new_zero_jitter(p.period)
     }
 }
