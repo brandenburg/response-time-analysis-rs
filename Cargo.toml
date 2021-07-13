@@ -1,6 +1,6 @@
 [package]
 name = "response-time-analysis"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Björn Brandenburg <bbb@mpi-sws.org>"]
 edition = "2018"
 
@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 assert_approx_eq = "1.1.0"
-itertools = "0.9.0"
-auto_impl = "0.4.0"
-thiserror = "1.0"
-derive_more = "0.99.14"
+itertools = "0.10.1"
+auto_impl = "0.4.1"
+thiserror = "1.0.26"
+derive_more = "0.99.16"
