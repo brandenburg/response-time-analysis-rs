@@ -17,6 +17,16 @@ pub struct RBF<B: ArrivalBound, C: JobCostModel> {
     pub arrival_bound: B,
 }
 
+impl<B: ArrivalBound, C: JobCostModel> RBF<B, C> {
+    /// Construct a new RBF from the given arrival bound and cost model.
+    pub fn new(ab: B, cm: C) -> RBF<B, C> {
+        RBF {
+            wcet: cm,
+            arrival_bound: ab,
+        }
+    }
+}
+
 impl<B: ArrivalBound, C: JobCostModel> RequestBound for RBF<B, C> {
     fn service_needed(&self, delta: Duration) -> Service {
         self.wcet
