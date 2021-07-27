@@ -119,6 +119,13 @@ impl Duration {
     pub const fn epsilon() -> Duration {
         Duration { val: 1 }
     }
+
+    /// Subtract without under-flowing.
+    pub const fn saturating_sub(&self, rhs: Duration) -> Duration {
+        Duration {
+            val: self.val.saturating_sub(rhs.val),
+        }
+    }
 }
 
 impl From<Service> for Duration {
@@ -186,6 +193,13 @@ impl Service {
 
     pub const fn in_interval(d: Duration) -> Service {
         Service { val: d.val }
+    }
+
+    /// Subtract without under-flowing.
+    pub const fn saturating_sub(&self, rhs: Service) -> Service {
+        Service {
+            val: self.val.saturating_sub(rhs.val),
+        }
     }
 }
 
