@@ -83,7 +83,7 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
         // activations in the closed interval [0, activation]
         self.arrival_bound
             .number_arrivals(activation.closed_since_time_zero())
-            - 1
+            .saturating_sub(1)
     }
 
     /// A bound on self-interference in a busy window, where the
@@ -190,11 +190,11 @@ where
 
         let supply_star = supply.provided_service(S_star);
         let omega = eoc.marginal_execution_cost(activation);
-        let rhs_F_star = supply_star - EPSILON_SERVICE + omega;
+        let rhs_F_star = supply_star.saturating_sub(EPSILON_SERVICE) + omega;
         let F_star = supply.service_time(rhs_F_star);
 
         // the response-time bound
-        Ok(F_star - activation.since_time_zero())
+        Ok(F_star.saturating_sub(activation.since_time_zero()))
     };
 
     // Bound the maximum offset (Lemma 18).
@@ -219,7 +219,7 @@ where
                     // However, we are looking for A such that
                     // number_arrivals(A) < number_arrivals(A + 1).
                     // Thus, we need to subtract one from delta.
-                    Offset::from_time_zero(delta - EPSILON)
+                    Offset::from_time_zero(delta.saturating_sub(EPSILON))
                 } else {
                     // This is some interfering polled callback.
                     // The steps_iter() gives us the values of delta such that

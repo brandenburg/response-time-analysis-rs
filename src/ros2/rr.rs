@@ -90,7 +90,7 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
         delta: Duration,
         num_polling_points: usize,
     ) -> Service {
-        let effective_interval = delta + self.response_time_bound - EPSILON;
+        let effective_interval = (delta + self.response_time_bound).saturating_sub(EPSILON);
         let arrived = self.arrival_bound.number_arrivals(effective_interval);
         let n = match self.kind {
             CallbackType::Timer | CallbackType::EventSource => arrived,
@@ -108,8 +108,10 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
 
     /// A bound on the number of self-interfering instances (see Def. 2 in the paper).
     fn max_self_interfering_instances(&self, delta: Duration) -> usize {
-        let effective_interval = delta + self.response_time_bound - EPSILON;
-        self.arrival_bound.number_arrivals(effective_interval) - 1
+        let effective_interval = (delta + self.response_time_bound).saturating_sub(EPSILON);
+        self.arrival_bound
+            .number_arrivals(effective_interval)
+            .saturating_sub(1)
     }
 
     /// A bound on self-interference.
@@ -204,7 +206,7 @@ where
 
     let supply_star = supply.provided_service(S_star);
     let omega = eoc.marginal_execution_cost(S_star);
-    let rhs_R_star = supply_star - EPSILON_SERVICE + omega;
+    let rhs_R_star = supply_star.saturating_sub(EPSILON_SERVICE) + omega;
 
     // we can directly solve the inequality
     Ok(supply.service_time(rhs_R_star))
