@@ -1238,4 +1238,56 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn singleton_subchain_rr() {
+        let sbf = supply::Periodic {
+            period: d(5),
+            budget: s(3),
+        };
+        let arrivals = arrival::Periodic::new(d(100));
+        let cost = wcet::Scalar::from(s(1));
+
+        let callbacks = vec![ros2::rr::Callback::new(
+            d(5),
+            &arrivals,
+            &cost,
+            ros2::rr::CallbackType::Timer,
+        )];
+
+        let workload = &callbacks[..];
+
+        // single-callback "subchain"
+        let sc = [&callbacks[0]];
+
+        let res = ros2::rr::rta_subchain(&sbf, workload, &sc[..], d(100000))
+            .expect("no fixed point found");
+        assert_eq!(res, d(5));
+    }
+
+    #[test]
+    fn singleton_subchain_bw() {
+        let sbf = supply::Periodic {
+            period: d(5),
+            budget: s(3),
+        };
+        let arrivals = arrival::Periodic::new(d(100));
+        let cost = wcet::Scalar::from(s(1));
+
+        let callbacks = vec![ros2::bw::Callback::new(
+            d(5),
+            &arrivals,
+            &cost,
+            ros2::rr::CallbackType::Timer,
+        )];
+
+        let workload = &callbacks[..];
+
+        // single-callback "subchain"
+        let sc = [&callbacks[0]];
+
+        let res = ros2::bw::rta_subchain(&sbf, workload, &sc[..], d(100000))
+            .expect("no fixed point found");
+        assert_eq!(res, d(5));
+    }
 }

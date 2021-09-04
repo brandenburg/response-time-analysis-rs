@@ -176,7 +176,6 @@ where
     // The response-time analysis for a given offset (Theorem 3).
     let rta = |activation: Offset| -> fixed_point::SearchResult {
         // Step 1: bound the starting time S*.
-
         let si = eoc.self_interference_rbf(activation);
 
         let rhs_S_star = |S_star: Duration| {
@@ -209,7 +208,9 @@ where
     // First, find all relevant steps.
     let all_steps = workload
         .iter()
-        .filter(|cb| cb.kind.is_pp())
+        // we only care about polled callbacks and the end of the
+        // subchain under analysis
+        .filter(|cb| cb.kind.is_pp() || std::ptr::eq(*eoc, *cb))
         .map(|cb| {
             cb.arrival_bound.steps_iter().map(move |delta| {
                 if std::ptr::eq(*eoc, cb) {
@@ -236,7 +237,7 @@ where
     // In a debug build, let's double-check the steps computed above
     // with a brute-force solution.
     #[cfg(debug_assertions)]
-    let brute_force_steps = (0..)
+    let mut brute_force_steps = (0..)
         .filter(|A| {
             workload.iter().any(|cb|
                 // Negated conditions of Lemma 19.
@@ -250,14 +251,21 @@ where
                 }
             )
         })
-        .map(|A| Offset::from(A));
+        .map(|A| Offset::from(A))
+        .peekable();
 
     // In a debug build, shadow all_steps with the checked version.
     #[cfg(debug_assertions)]
-    let all_steps = all_steps.zip(brute_force_steps).map(|(a, bf)| {
-        assert_eq!(a, bf);
-        a
-    });
+    let all_steps = {
+        let mut wrapped = all_steps.peekable();
+        // Manually check the first point to make sure we're not calling
+        // zip on an empty iterator.
+        assert_eq!(brute_force_steps.peek(), wrapped.peek());
+        wrapped.zip(brute_force_steps).map(|(a, bf)| {
+            assert_eq!(a, bf);
+            a
+        })
+    };
 
     // The search space is given by A=0 and each relevant step below max_offset.
     let search_space = all_steps.take_while(|activation| *activation < max_offset);
