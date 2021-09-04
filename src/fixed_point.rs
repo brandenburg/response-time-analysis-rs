@@ -3,7 +3,10 @@ use std::cmp::Ordering;
 use thiserror::Error;
 
 use crate::supply::SupplyBound;
-use crate::time::{Duration, Offset, Service, Time};
+use crate::time::{Duration, Offset, Service};
+
+#[cfg(debug_assertions)]
+use crate::time::Time;
 
 /// Error type returned when a fixed point search fails.
 #[derive(Debug, Error, Copy, Clone, Eq, PartialEq, PartialOrd)]
