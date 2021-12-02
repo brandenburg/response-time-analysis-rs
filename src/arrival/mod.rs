@@ -45,6 +45,7 @@ pub trait ArrivalBound {
 }
 
 mod aggregated;
+mod arrival_curve_prefix;
 mod curve;
 mod dmin;
 mod never;
@@ -54,6 +55,7 @@ mod propagated;
 mod slice;
 mod sporadic;
 
+pub use arrival_curve_prefix::ArrivalCurvePrefix;
 pub use curve::{Curve, ExtrapolatingCurve};
 pub use dmin::{delta_min_iter, nonzero_delta_min_iter};
 pub use never::Never;
@@ -66,3 +68,6 @@ pub use sporadic::Sporadic;
 fn divide_with_ceil(a: Duration, b: Duration) -> u64 {
     a / b + (a % b > Duration::from(0)) as u64
 }
+
+#[cfg(test)]
+mod tests;

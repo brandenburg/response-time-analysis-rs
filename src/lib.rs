@@ -1,11 +1,10 @@
 pub mod arrival;
 pub mod demand;
 pub mod fixed_point;
+pub mod ros2;
 pub mod supply;
 pub mod time;
 pub mod wcet;
-
-pub mod ros2;
 
 #[cfg(test)]
 mod tests {
