@@ -1,3 +1,5 @@
+use std::iter::FromIterator;
+
 use crate::arrival::ArrivalBound;
 use crate::demand::RequestBound;
 use crate::supply::SupplyBound;
@@ -472,4 +474,100 @@ fn check_rbf_steps<T: RequestBound>(rbf: &T, horizon: Duration) {
             break;
         }
     }
+}
+
+#[test]
+fn ros2_overloaded_executor_pp() {
+    let dmin: Vec<u64> = vec![491, 991, 1491, 1591, 1991, 2491, 2991];
+    let curve = arrival::Curve::from_iter(dmin.iter().map(|t| d(*t)));
+    let wcet = wcet::Scalar::from(s(1000));
+
+    let cb = demand::RBF {
+        wcet: wcet,
+        arrival_bound: curve,
+    };
+
+    let sbf = supply::Dedicated::new();
+
+    let interference: demand::Aggregate<demand::RBF<arrival::Curve, wcet::Scalar>> =
+        demand::Aggregate::new(vec![]);
+
+    let bound = ros2::rta_polling_point_callback(&sbf, &cb, &interference, d(1000));
+    assert!(bound.is_err());
+}
+
+#[test]
+fn ros2_overloaded_executor_bw() {
+    let dmin: Vec<u64> = vec![491, 991, 1491, 1591, 1991, 2491, 2991];
+    let curve = arrival::Curve::from_iter(dmin.iter().map(|t| d(*t)));
+    let wcet = wcet::Scalar::from(s(1000));
+
+    let callbacks = vec![ros2::bw::Callback::new(
+        d(10000),
+        &curve,
+        &wcet,
+        ros2::rr::CallbackType::PolledUnknownPrio,
+    )];
+
+    let sbf = supply::Dedicated::new();
+
+    let workload = &callbacks[..];
+    // single-callback "chain"
+    let chain = [&callbacks[0]];
+    let bound = ros2::bw::rta_subchain(&sbf, workload, &chain[..], d(100000));
+    assert!(bound.is_err());
+}
+
+#[test]
+fn ros2_overloaded_executor_rr() {
+    let dmin: Vec<u64> = vec![491, 991, 1491, 1591, 1991, 2491, 2991];
+    let curve = arrival::Curve::from_iter(dmin.iter().map(|t| d(*t)));
+    let wcet = wcet::Scalar::from(s(1000));
+
+    let callbacks = vec![ros2::rr::Callback::new(
+        d(10000),
+        &curve,
+        &wcet,
+        ros2::rr::CallbackType::PolledUnknownPrio,
+    )];
+
+    let sbf = supply::Dedicated::new();
+
+    let workload = &callbacks[..];
+    // single-callback "chain"
+    let chain = [&callbacks[0]];
+    let bound = ros2::rr::rta_subchain(&sbf, workload, &chain[..], d(100000));
+    assert!(bound.is_err());
+}
+
+#[test]
+fn ros2_overloaded_executor2_rr() {
+    let sbf = supply::Dedicated::new();
+
+    let p1_wcet = wcet::Scalar::from(s(1000));
+    let p2_wcet = wcet::Scalar::from(s(1));
+
+    let p1_ab = arrival::Periodic::new(d(500));
+    let p2_ab = arrival::Periodic::new(d(100));
+
+    let callbacks = vec![
+        ros2::rr::Callback::new(
+            d(1001),
+            &p1_ab,
+            &p1_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::rr::Callback::new(
+            d(2021),
+            &p2_ab,
+            &p2_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+    ];
+
+    let workload = &callbacks[..];
+    // single-callback "chain"
+    let chain = [&callbacks[1]];
+    let bound = ros2::rr::rta_subchain(&sbf, workload, &chain[..], d(10000));
+    assert!(bound.is_err());
 }
