@@ -49,7 +49,7 @@ impl CallbackType {
 
 /// A shallow wrapper type for callbacks to compute the direct and
 /// self-interference bounds needed for the round-robin-aware
-/// analysis (Theorem 2 of the paper).
+/// analysis (Theorem 2 of [the paper](https://people.mpi-sws.org/~bbb/papers/pdf/rtss21-ros.pdf)).
 ///
 /// Note: this is intentionally not the same type as
 /// [bw::Callback][super::bw::Callback], even though they look very
@@ -140,7 +140,7 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
     }
 }
 
-/// Round-robin-aware chain analysis (see Theorem 2 in the paper).
+/// Round-robin-aware chain analysis (see Theorem 2 in [the paper](https://people.mpi-sws.org/~bbb/papers/pdf/rtss21-ros.pdf)).
 ///
 /// # Parameters
 ///

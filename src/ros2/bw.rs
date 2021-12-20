@@ -14,7 +14,7 @@ const EPSILON_SERVICE: Service = Service::in_interval(EPSILON);
 
 /// A shallow wrapper type for callbacks to compute the direct and
 /// self-interference bounds needed for the busy-window- and
-/// round-robin-aware analysis (Theorem 3 of the paper).
+/// round-robin-aware analysis (Theorem 3 of [the paper](https://people.mpi-sws.org/~bbb/papers/pdf/rtss21-ros.pdf)).
 ///
 /// Note: this is intentionally not the same type as
 /// [rr::Callback][super::rr::Callback], even though they look very
@@ -94,6 +94,17 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
             .cost_of_jobs(self.max_self_interfering_instances(activation))
     }
 
+    /// A bound on the total workload of the callback in a busy
+    /// window, where `A_star` denotes the end point of the half-open
+    /// busy-window interval `[0, A_star)`.
+    ///
+    /// See Lemma 18 of [the paper](https://people.mpi-sws.org/~bbb/papers/pdf/rtss21-ros.pdf).
+    #[allow(non_snake_case)]
+    fn own_workload_rbf(&self, A_star: Offset) -> Service {
+        let n_activations = self.arrival_bound.number_arrivals(A_star.since_time_zero());
+        self.cost_model.cost_of_jobs(n_activations)
+    }
+
     /// A bound on the marginal execution cost, denoted `\Omega` in Theorem 2.
     fn marginal_execution_cost(&self, activation: Offset) -> Service {
         let n = self.max_self_interfering_instances(activation);
@@ -115,7 +126,7 @@ impl<'a, 'b, AB: ArrivalBound + ?Sized, CM: JobCostModel + ?Sized> Callback<'a, 
 }
 
 /// Hybrid round-robin- and busy-window-aware chain analysis (Theorem
-/// 3 in the paper).
+/// 3 in [the paper](https://people.mpi-sws.org/~bbb/papers/pdf/rtss21-ros.pdf)).
 ///
 /// # Parameters
 ///
@@ -198,7 +209,7 @@ where
 
     // Bound the maximum offset (Lemma 18).
     let rhs_max = |A_star: Duration| {
-        let si = eoc.self_interference_rbf(Offset::from_time_zero(A_star));
+        let si = eoc.own_workload_rbf(Offset::from_time_zero(A_star));
         let di = bw_interference(A_star, Offset::from_time_zero(A_star));
         EPSILON_SERVICE + di + si
     };
