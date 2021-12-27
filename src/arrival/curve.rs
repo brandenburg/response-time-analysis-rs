@@ -156,6 +156,31 @@ impl Curve {
         }
     }
 
+    /// Extend the underlying delta-min prefix by one element while
+    /// exploiting _both_ the
+    /// [subadditivity](https://en.wikipedia.org/wiki/Subadditivity)
+    /// of proper arrival curves _and_ the provided bound on the next
+    /// step. The bound is a tuple (`delta`, `njobs`), where `njobs`
+    /// *must* be the element that the underlying delta-min vector is
+    /// extrapolated to.
+    pub fn extrapolate_with_bound(&mut self, bound: (Duration, usize)) {
+        let (delta, njobs) = bound;
+        // We subtract epsilon since we store the distance
+        // between jobs, not the interval length.
+        let dmin = delta - Duration::epsilon();
+        // check that we've been given the expected upper bound
+        // (+ 2 because we don't store the values for 0 and 1 jobs)
+        if self.min_distance.len() + 2 == njobs {
+            if self.can_extrapolate() {
+                let extrapolated = self.extrapolate_next();
+                self.min_distance.push(dmin.max(extrapolated))
+            } else {
+                // If we cannot extrapolate, simply take the given bound.
+                self.min_distance.push(dmin)
+            }
+        }
+    }
+
     fn min_job_separation(&self) -> Duration {
         // minimum separation of two jobs given by first element
         self.min_distance[0]
