@@ -3,7 +3,9 @@ use std::collections::VecDeque;
 use std::iter::{self, FromIterator};
 use std::rc::Rc;
 
-use super::{divide_with_ceil, ArrivalBound, Periodic, Propagated, Sporadic};
+use super::{
+    divide_with_ceil, nonzero_delta_min_iter, ArrivalBound, Periodic, Propagated, Sporadic,
+};
 use crate::time::{Duration, Offset};
 
 /// An arrival curve (also commonly called an "upper event arrival
@@ -54,7 +56,22 @@ impl Curve {
                 v.push(s.min_inter_arrival * periods - s.jitter)
             }
         }
-        Curve { min_distance: v }
+        Curve::new(v)
+    }
+
+    /// Obtain an arrival curve by inferring a delta-min vector from
+    /// any given arrival process `T`.
+    ///
+    /// The delta-min vector is chosen such that it covers at least
+    /// `up_to_njobs` job arrivals.
+    pub fn from_arrival_bound<T: ArrivalBound>(ab: &T, up_to_njobs: usize) -> Curve {
+        Self::new(
+            nonzero_delta_min_iter(&ab)
+                .enumerate()
+                .take_while(|(count, (njobs, _delta))| *njobs <= up_to_njobs || *count < 2)
+                .map(|(_count, (_njobs, delta))| delta)
+                .collect(),
+        )
     }
 
     /// Obtain an arrival curve by inferring a delta-min prefix from
