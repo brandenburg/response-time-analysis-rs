@@ -25,7 +25,7 @@ impl ArrivalBound for Periodic {
     }
 
     fn clone_with_jitter(&self, jitter: Duration) -> Box<dyn ArrivalBound> {
-        let mut ab = Box::new(Sporadic::from(self.clone()));
+        let mut ab = Box::new(Sporadic::from(*self));
         ab.jitter = jitter;
         ab
     }

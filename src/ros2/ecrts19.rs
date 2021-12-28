@@ -228,7 +228,7 @@ where
         // Note that steps_iter() yields interval lengths, but we are interested in
         // offsets. Since the length of an interval [0, A] is A+1, we need to subtract one
         // to obtain the offset.
-        .map(|x| Offset::closed_from_time_zero(x))
+        .map(Offset::closed_from_time_zero)
         .take_while(|x| *x <= Offset::from_time_zero(max_bw));
     // for each relevant offset in the search space,
     let rta_bounds = offsets.map(|offset| {

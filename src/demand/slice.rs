@@ -28,7 +28,7 @@ impl<'a, T: RequestBound> RequestBound for Slice<'a, T> {
             .iter()
             .map(|rbf| rbf.least_wcet_in_interval(delta))
             .min()
-            .unwrap_or(Service::none())
+            .unwrap_or_else(Service::none)
     }
 
     fn steps_iter<'b>(&'b self) -> Box<dyn Iterator<Item = Duration> + 'b> {

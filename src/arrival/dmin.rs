@@ -49,16 +49,14 @@ impl<'a, AB: ArrivalBound> Iterator for DeltaMinIterator<'a, AB> {
     }
 }
 
-pub fn nonzero_delta_min_iter<'a>(
-    ab: &'a impl ArrivalBound,
-) -> impl Iterator<Item = (usize, Duration)> + 'a {
+pub fn nonzero_delta_min_iter(
+    ab: &impl ArrivalBound,
+) -> impl Iterator<Item = (usize, Duration)> + '_ {
     // don't both bother with the two default cases (zero and one jobs)
     DeltaMinIterator::new(ab)
 }
 
-pub fn delta_min_iter<'a>(
-    ab: &'a impl ArrivalBound,
-) -> impl Iterator<Item = (usize, Duration)> + 'a {
+pub fn delta_min_iter(ab: &impl ArrivalBound) -> impl Iterator<Item = (usize, Duration)> + '_ {
     // first the two default cases for zero and one jobs
     iter::once((0, Duration::from(0)))
         .chain(iter::once((1, Duration::from(0))))

@@ -18,7 +18,7 @@ pub trait JobCostModel {
         self.job_cost_iter()
             .take(n)
             .min()
-            .unwrap_or(Service::none())
+            .unwrap_or_else(Service::none)
     }
 
     /// Model: iterate the maximum WCETs of any sequence of consecutive jobs.

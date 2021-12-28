@@ -40,10 +40,10 @@ pub enum CallbackType {
 
 impl CallbackType {
     pub fn is_pp(&self) -> bool {
-        match self {
-            CallbackType::Timer | CallbackType::EventSource => false,
-            _ => true,
-        }
+        matches!(
+            self,
+            CallbackType::PolledUnknownPrio | CallbackType::Polled(_)
+        )
     }
 }
 

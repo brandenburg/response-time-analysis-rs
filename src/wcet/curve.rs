@@ -36,7 +36,7 @@ impl Curve {
 
 impl JobCostModel for Curve {
     fn cost_of_jobs(&self, n: usize) -> Service {
-        if self.wcet_of_n_jobs.len() > 0 && n > 0 {
+        if !self.wcet_of_n_jobs.is_empty() && n > 0 {
             // resolve large 'n' by super-additivity of cost function
             let x = n / self.wcet_of_n_jobs.len();
             let y = n % self.wcet_of_n_jobs.len();
@@ -75,7 +75,7 @@ impl JobCostModel for Curve {
 }
 
 impl Curve {
-    pub fn from_trace<'a>(job_costs: impl Iterator<Item = Service>, max_n: usize) -> Curve {
+    pub fn from_trace(job_costs: impl Iterator<Item = Service>, max_n: usize) -> Curve {
         let mut cost_of = Vec::with_capacity(max_n);
         let mut window: VecDeque<Service> = VecDeque::with_capacity(max_n + 1);
 

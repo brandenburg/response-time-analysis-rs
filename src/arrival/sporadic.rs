@@ -59,7 +59,7 @@ impl ArrivalBound for Sporadic {
     }
 
     fn clone_with_jitter(&self, added_jitter: Duration) -> Box<dyn ArrivalBound> {
-        let mut ab = Box::new(self.clone());
+        let mut ab = Box::new(*self);
         ab.jitter += added_jitter;
         ab
     }

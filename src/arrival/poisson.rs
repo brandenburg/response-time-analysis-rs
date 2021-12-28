@@ -23,7 +23,7 @@ impl Poisson {
 
     pub fn approximate(&self, epsilon: f64) -> ApproximatedPoisson {
         ApproximatedPoisson {
-            poisson: self.clone(),
+            poisson: *self,
             epsilon,
         }
     }

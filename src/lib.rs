@@ -694,7 +694,7 @@ mod tests {
     fn brute_force_rbf_steps<'a, T: RequestBound>(
         rbf: &'a T,
     ) -> Box<dyn Iterator<Item = Duration> + 'a> {
-        Box::new((1..).map(|t| Duration::from(t)).filter(move |delta| {
+        Box::new((1..).map(Duration::from).filter(move |delta| {
             let n = rbf.service_needed(*delta);
             let m = rbf.service_needed(*delta - d(1));
             assert!(m <= n, "demand must be monotonic");

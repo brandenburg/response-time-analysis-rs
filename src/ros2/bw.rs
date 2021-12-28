@@ -251,7 +251,7 @@ where
                 }
             )
         })
-        .map(|A| Offset::from(A))
+        .map(Offset::from)
         .peekable();
 
     // In a debug build, shadow all_steps with the checked version.
@@ -272,5 +272,5 @@ where
 
     // Apply the offset-specific RTA to each offset in the search space and
     // return the maximum response-time bound.
-    fixed_point::max_response_time(search_space.map(|activation| rta(activation)))
+    fixed_point::max_response_time(search_space.map(rta))
 }

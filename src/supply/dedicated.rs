@@ -4,7 +4,7 @@ use crate::time::{Duration, Service};
 /// A trivial model to represent a 100%-available, dedicated processor.
 ///
 /// There are no delays due to resource unavailability under this model.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Dedicated {
     // nothing to define here
 }

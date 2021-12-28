@@ -121,6 +121,7 @@ impl Duration {
     }
 
     /// Subtract without under-flowing.
+    #[must_use]
     pub const fn saturating_sub(&self, rhs: Duration) -> Duration {
         Duration {
             val: self.val.saturating_sub(rhs.val),
@@ -196,6 +197,7 @@ impl Service {
     }
 
     /// Subtract without under-flowing.
+    #[must_use]
     pub const fn saturating_sub(&self, rhs: Service) -> Service {
         Service {
             val: self.val.saturating_sub(rhs.val),

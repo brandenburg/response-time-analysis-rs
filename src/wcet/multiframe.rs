@@ -28,6 +28,6 @@ impl JobCostModel for Multiframe {
             .take(n)
             .copied()
             .min()
-            .unwrap_or(Service::none())
+            .unwrap_or_else(Service::none)
     }
 }

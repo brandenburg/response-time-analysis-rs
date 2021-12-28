@@ -64,10 +64,7 @@ impl Curve {
     /// The resultant delta-min vector will consist of `prefix_jobs`
     /// entries (if there are a sufficient number of arrivals in the
     /// trace).
-    pub fn from_trace<'a>(
-        arrival_times: impl Iterator<Item = Offset>,
-        prefix_jobs: usize,
-    ) -> Curve {
+    pub fn from_trace(arrival_times: impl Iterator<Item = Offset>, prefix_jobs: usize) -> Curve {
         let mut d: Vec<Duration> = Vec::with_capacity(prefix_jobs);
         let mut window: VecDeque<Offset> = VecDeque::with_capacity(prefix_jobs + 1);
 
@@ -233,7 +230,7 @@ impl ArrivalBound for Curve {
 
             fn next(&mut self) -> Option<Self::Item> {
                 let val = self.sum;
-                self.sum = self.sum + self.step_sizes[self.idx];
+                self.sum += self.step_sizes[self.idx];
                 self.idx = (self.idx + 1) % self.step_sizes.len();
                 Some(val)
             }
