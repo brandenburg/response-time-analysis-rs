@@ -41,22 +41,18 @@ impl Curve {
     }
 
     /// Obtain an arrival curve by inferring a delta-min vector from
-    /// a sporadic arrival process.
+    /// any given arrival process `T`.
     ///
-    /// The delta-min vector is chosen such that it covers at least
-    /// `interval` time units.
-    pub fn unroll_sporadic(s: &Sporadic, interval: Duration) -> Curve {
-        let n = s.number_arrivals(interval) as usize + 1;
-        let mut v = Vec::with_capacity(n);
-        for i in 0..n {
-            let periods = i as u64 + 1;
-            if s.jitter >= s.min_inter_arrival * periods {
-                v.push(Duration::zero())
-            } else {
-                v.push(s.min_inter_arrival * periods - s.jitter)
-            }
-        }
-        Curve::new(v)
+    /// The delta-min vector is chosen such that it covers all
+    /// arrivals until the given `horizon`.
+    pub fn from_arrival_bound_until<T: ArrivalBound>(ab: &T, horizon: Duration) -> Curve {
+        Self::new(
+            nonzero_delta_min_iter(&ab)
+                .enumerate()
+                .take_while(|(count, (_njobs, delta))| *delta <= horizon || *count < 2)
+                .map(|(_count, (_njobs, delta))| delta)
+                .collect(),
+        )
     }
 
     /// Obtain an arrival curve by inferring a delta-min vector from
@@ -306,8 +302,8 @@ impl From<Sporadic> for Curve {
         // pessimism too frequently.
         // By default, unroll until the jitter jobs are no more than 10% of the
         // jobs of the jobs in the unrolled interval, and until for at least 500 jobs.
-        let n = 500.max(jitter_jobs * 10);
-        Curve::unroll_sporadic(&s, s.min_inter_arrival * n)
+        let n = 500.max(jitter_jobs as usize * 10);
+        Curve::from_arrival_bound(&s, n)
     }
 }
 

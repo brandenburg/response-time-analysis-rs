@@ -51,7 +51,7 @@ fn period_arrivals_dmin() {
 fn periodic_arrivals_via_unroll_sporadic() {
     let p = arrival::Periodic { period: d(10) };
     let s = arrival::Sporadic::from(p);
-    let a = arrival::Curve::unroll_sporadic(&s, d(1000));
+    let a = arrival::Curve::from_arrival_bound_until(&s, d(1000));
     assert_eq!(a.number_arrivals(d(0)), 0);
     assert_eq!(a.number_arrivals(d(1)), 1);
     assert_eq!(a.number_arrivals(d(8)), 1);
@@ -206,7 +206,10 @@ fn compare_sporadic_arrivals() {
     };
     let a = arrival::Curve::from(s);
     for delta in 0..1000 {
-        assert_eq!(a.number_arrivals(d(delta)), s.number_arrivals(d(delta)));
+        assert_eq!(
+            a.number_arrivals(d(delta)),
+            s.number_arrivals(d(delta))
+        );
     }
 }
 
@@ -676,7 +679,7 @@ fn curve_from_periodic() {
     let p = Periodic::new(d(15));
     let s = Sporadic::from(p);
     let cp = Curve::from_arrival_bound(&p, 12);
-    let cs = Curve::unroll_sporadic(&s, d(155));
+    let cs = Curve::from_arrival_bound_until(&s, d(155));
 
     for delta in 0..=150 {
         let delta = d(delta);
