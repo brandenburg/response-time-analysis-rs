@@ -48,6 +48,23 @@ impl ArrivalCurvePrefix {
         ArrivalCurvePrefix { horizon, steps }
     }
 
+    /// Obtain an arrival-curve prefix by recording all steps of a
+    /// given arbitrary arrival process `T` until a given horizon.
+    ///
+    /// The `steps` vector covers all arrivals until the given `horizon`.
+    pub fn from_arrival_bound_until<T: ArrivalBound>(
+        ab: &T,
+        horizon: Duration,
+    ) -> ArrivalCurvePrefix {
+        Self::new(
+            horizon,
+            ab.steps_iter()
+                .take_while(|delta| *delta <= horizon.max(Duration::epsilon()))
+                .map(|delta| (delta, ab.number_arrivals(delta)))
+                .collect(),
+        )
+    }
+
     fn max_njobs_in_horizon(&self) -> usize {
         self.steps.last().map(|(_, njobs)| *njobs).unwrap_or(0)
     }

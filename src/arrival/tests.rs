@@ -206,10 +206,7 @@ fn compare_sporadic_arrivals() {
     };
     let a = arrival::Curve::from(s);
     for delta in 0..1000 {
-        assert_eq!(
-            a.number_arrivals(d(delta)),
-            s.number_arrivals(d(delta))
-        );
+        assert_eq!(a.number_arrivals(d(delta)), s.number_arrivals(d(delta)));
     }
 }
 
@@ -680,10 +677,39 @@ fn curve_from_periodic() {
     let s = Sporadic::from(p);
     let cp = Curve::from_arrival_bound(&p, 12);
     let cs = Curve::from_arrival_bound_until(&s, d(155));
+    let cps = ArrivalCurvePrefix::from_arrival_bound_until(&s, d(155));
 
     for delta in 0..=150 {
         let delta = d(delta);
         assert_eq!(p.number_arrivals(delta), cp.number_arrivals(delta));
         assert_eq!(p.number_arrivals(delta), cs.number_arrivals(delta));
+        assert_eq!(cps.number_arrivals(delta), cs.number_arrivals(delta));
+    }
+}
+
+#[test]
+fn curve_from_sporadic_with_jitter() {
+    let s = Sporadic::new(d(10), d(40));
+    let cs = Curve::from_arrival_bound_until(&s, d(200));
+    let cps = ArrivalCurvePrefix::from_arrival_bound_until(&s, d(200));
+
+    for delta in 0..=200 {
+        let delta = d(delta);
+        assert_eq!(s.number_arrivals(delta), cs.number_arrivals(delta));
+        assert_eq!(s.number_arrivals(delta), cps.number_arrivals(delta));
+    }
+}
+
+#[test]
+fn curve_from_poisson() {
+    let p = arrival::ApproximatedPoisson::new(0.01, 0.001);
+
+    let c = Curve::from_arrival_bound_until(&p, d(200));
+    let cp = ArrivalCurvePrefix::from_arrival_bound_until(&p, d(200));
+
+    for delta in 0..=200 {
+        let delta = d(delta);
+        assert_eq!(p.number_arrivals(delta), c.number_arrivals(delta));
+        assert_eq!(p.number_arrivals(delta), cp.number_arrivals(delta));
     }
 }
