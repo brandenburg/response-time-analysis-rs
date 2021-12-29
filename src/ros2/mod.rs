@@ -9,3 +9,6 @@ pub mod bw;
 pub mod rr;
 
 pub use ecrts19::{rta_event_source, rta_polling_point_callback, rta_processing_chain, rta_timer};
+
+#[cfg(test)]
+mod tests;
