@@ -31,3 +31,6 @@ mod periodic;
 pub use constrained::Constrained;
 pub use dedicated::Dedicated;
 pub use periodic::Periodic;
+
+#[cfg(test)]
+mod tests;
