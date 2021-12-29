@@ -52,8 +52,8 @@ impl ArrivalBound for Sporadic {
         Box::new(
             iter::once(Duration::from(1)).chain(
                 (1..)
-                    .filter(move |j| self.min_inter_arrival * *j + Duration::from(1) > self.jitter)
-                    .map(move |j| self.min_inter_arrival * j + Duration::from(1) - self.jitter),
+                    .filter(move |j| self.min_inter_arrival * *j > self.jitter)
+                    .map(move |j| self.min_inter_arrival * j + Duration::epsilon() - self.jitter),
             ),
         )
     }
