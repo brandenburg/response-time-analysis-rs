@@ -55,6 +55,18 @@ pub struct ApproximatedPoisson {
     epsilon: f64,
 }
 
+impl ApproximatedPoisson {
+    /// Construct a new approximated Poisson arrival process with
+    /// mean arrival rate `lambda` and under-approximation bound
+    /// `epsilon`.
+    pub fn new(lambda: f64, epsilon: f64) -> Self {
+        ApproximatedPoisson {
+            epsilon,
+            poisson: Poisson { rate: lambda },
+        }
+    }
+}
+
 impl ArrivalBound for ApproximatedPoisson {
     /// Bound the number of jobs released in any interval of length `delta` with probability `1 - epsilon`.
     fn number_arrivals(&self, delta: Duration) -> usize {
