@@ -32,3 +32,6 @@ mod scalar;
 pub use curve::{Curve, ExtrapolatingCurve};
 pub use multiframe::Multiframe;
 pub use scalar::Scalar;
+
+#[cfg(test)]
+mod tests;
