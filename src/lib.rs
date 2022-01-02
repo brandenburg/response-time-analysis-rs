@@ -1,6 +1,7 @@
 pub mod arrival;
 pub mod demand;
 pub mod fixed_point;
+pub mod fixed_priority;
 pub mod ros2;
 pub mod supply;
 pub mod time;
