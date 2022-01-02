@@ -7,7 +7,8 @@ use crate::time::Service;
 /// processor demand of a single job: the scalar WCET bound.
 #[derive(Debug, Clone, Copy)]
 pub struct Scalar {
-    wcet: Service,
+    /// The worst-case execution bound.
+    pub wcet: Service,
 }
 
 impl Scalar {
