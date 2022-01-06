@@ -1,6 +1,6 @@
 use auto_impl::auto_impl;
 
-use crate::time::{Duration, Service};
+use crate::time::{Duration, Offset, Service};
 
 /// The general interface for (arbitrarily shaped) processor demand.
 /// This can represent the demand of a single task, or the cumulative
@@ -46,6 +46,24 @@ pub trait AggregateRequestBound: RequestBound {
     /// source of demand contributes more than `max_jobs` worth of
     /// demand.
     fn service_needed_by_n_jobs_per_component(&self, delta: Duration, max_jobs: usize) -> Service;
+}
+
+/// Yield the sequence of *offsets* at which the request bound
+/// function "steps", i.e., where the procesor demand increases.
+///
+/// More precisely, the iterator yields values of `A` such that
+///
+/// `rb.service_needed(A.since_time_zero()) < rb.service_needed(A.closed_since_time_zero())`
+///
+/// which is equivalent to
+///
+/// `rb.service_needed(Duration::from(A)) < rb.service_needed(Duration::from(A) + Duration::epsilon())`.
+///
+/// It always yields `A=0` since [RequestBound::steps_iter]
+/// necessarily yields `delta=1`, which results in `A=0` being the
+/// first element yielded by `step_offsets`.
+pub fn step_offsets(rb: &'_ (impl RequestBound + ?Sized)) -> impl Iterator<Item = Offset> + '_ {
+    rb.steps_iter().map(Offset::closed_from_time_zero)
 }
 
 mod aggregate;
