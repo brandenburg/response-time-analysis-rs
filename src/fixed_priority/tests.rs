@@ -1,6 +1,7 @@
 use crate::arrival::Sporadic;
 use crate::demand;
 use crate::fixed_priority;
+use crate::time::Service;
 use crate::wcet;
 
 use crate::tests::{d, s};
@@ -326,5 +327,319 @@ fn fp_fp_rta_overload() {
             horizon,
         );
         assert_eq!(expected_bound.map(d), result.ok());
+    }
+}
+
+#[test]
+fn fp_np_rta_1() {
+    let horizon = d(1000);
+    let params = vec![(20, 70), (20, 80), (35, 200)];
+
+    let expected = vec![54, 74, 75];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = rbfs[i + 1..]
+            .iter()
+            .map(|r| r.wcet.wcet)
+            .max_by_key(|wcet| *wcet)
+            .unwrap_or(s(0));
+
+        let result = fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            blocking_bound.saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(Ok(d(*expected_bound)), result);
+    }
+}
+
+#[test]
+fn fp_np_rta_overload() {
+    let horizon = d(10000);
+    let params = vec![(10, 20), (20, 50), (30, 200)];
+
+    let expected = vec![Some(39), Some(79), None];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = rbfs[i + 1..]
+            .iter()
+            .map(|r| r.wcet.wcet)
+            .max_by_key(|wcet| *wcet)
+            .unwrap_or(s(0));
+
+        let result = fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            blocking_bound.saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(expected_bound.map(d), result.ok());
+    }
+}
+
+#[test]
+fn fp_lp_rta_1() {
+    let horizon = d(100);
+    let params = vec![(4, 12), (6, 20), (8, 40)];
+    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
+    let task_last_nonpr_segment: Vec<u64> = vec![2, 3, 3];
+
+    let expected: Vec<u64> = vec![7, 13, 22];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    let task_last_segment: Vec<Service> = task_last_nonpr_segment
+        .iter()
+        .map(|m| Service::from(*m))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
+
+        let result = fixed_priority::limited_preemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            task_last_segment[i],
+            s(*blocking_bound).saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(Ok(d(*expected_bound)), result);
+    }
+}
+
+#[test]
+fn fp_lp_rta_overload() {
+    let horizon = d(100000);
+    let params = vec![(4, 12), (6, 20), (8, 21)];
+    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
+    let task_last_nonpr_segment: Vec<u64> = vec![2, 3, 3];
+
+    let expected = vec![Some(7), Some(13), None];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    let task_last_segment: Vec<Service> = task_last_nonpr_segment
+        .iter()
+        .map(|m| Service::from(*m))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
+
+        let result = fixed_priority::limited_preemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            task_last_segment[i],
+            s(*blocking_bound).saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(expected_bound.map(d), result.ok());
+    }
+}
+
+#[test]
+fn fp_fnps_rta_1() {
+    let horizon = d(100);
+    let params = vec![(4, 12), (6, 20), (8, 40)];
+    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
+
+    let expected: Vec<u64> = vec![7, 17, 32];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
+
+        let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            s(*blocking_bound).saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(Ok(d(*expected_bound)), result);
+    }
+}
+
+#[test]
+fn fp_fnps_rta_overload() {
+    let horizon = d(10000);
+    let params = vec![(4, 12), (6, 20), (8, 30), (8, 40)];
+    let max_nonpr_segment: Vec<u64> = vec![2, 3, 3, 4];
+
+    let expected = vec![Some(7), Some(17), Some(35), None];
+
+    let arrivals: Vec<Sporadic> = params
+        .iter()
+        .map(|(_wcet, inter_arrival)| Sporadic::new_zero_jitter(d(*inter_arrival)))
+        .collect();
+
+    let costs: Vec<wcet::Scalar> = params
+        .iter()
+        .map(|(wcet, _)| wcet::Scalar::new(s(*wcet)))
+        .collect();
+
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    for (i, expected_bound) in expected.iter().enumerate() {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
+
+        let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            s(*blocking_bound).saturating_sub(s(1)),
+            horizon,
+        );
+        assert_eq!(expected_bound.map(d), result.ok());
+    }
+}
+
+/// The Example in Table 3 of "Applying new sc;hedulingtheory to
+/// static priority pre-emptive scheduling", Audsley et al., Software
+/// Engineering Journal, 1993.
+#[test]
+fn fp_fnps_rta_audsley() {
+    let horizon = d(1000000);
+    // (cost, period, deadline, max non-preemptive segment, jitter, expected bound)
+    let example_tasks = vec![
+        (51, 1000, 1000, 0, 0, 51),
+        (3000, 2000000, 5000, 300, 0, 3504),
+        (2000, 25000, 25000, 600, 0, 5906),
+        (5000, 25000, 25000, 900, 0, 11512),
+        (1000, 40000, 40000, 1350, 0, 13064),
+        (3000, 50000, 50000, 1350, 0, 16217),
+        (5000, 50000, 50000, 750, 0, 20821),
+        (8000, 59000, 59000, 750, 0, 36637),
+        (9000, 80000, 80000, 1350, 0, 47798),
+        (2000, 80000, 80000, 450, 0, 48949),
+        (5000, 100000, 100000, 1050, 0, 99150),
+        (1000, 200000, 200000, 450, 1000, 99550),
+        (3000, 200000, 200000, 450, 0, 140641),
+        (1000, 200000, 200000, 450, 0, 141692),
+        (1000, 200000, 200000, 1350, 0, 143694),
+        (3000, 1000000, 1000000, 0, 0, 145446),
+        (1000, 1000000, 1000000, 0, 0, 146497),
+        (1000, 1000000, 1000000, 0, 0, 147548),
+    ];
+
+    let arrivals: Vec<Sporadic> = example_tasks
+        .iter()
+        .map(|(_cost, period, _deadline, _nps, jitter, _expected)| {
+            Sporadic::new(d(*period), d(*jitter))
+        })
+        .collect();
+    let costs: Vec<wcet::Scalar> = example_tasks
+        .iter()
+        .map(|(cost, _period, _deadline, _nps, _jitter, _expected)| wcet::Scalar::new(s(*cost)))
+        .collect();
+    let rbfs: Vec<demand::RBF<_, _>> = costs
+        .iter()
+        .zip(arrivals.iter())
+        .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
+        .collect();
+
+    for (i, (_cost, _period, _deadline, blocking_bound, _jitter, expected)) in
+        example_tasks.iter().enumerate()
+    {
+        let interference = demand::Slice::of(&rbfs[0..i]);
+
+        let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
+            &interference,
+            &costs[i],
+            &arrivals[i],
+            s(*blocking_bound),
+            horizon,
+        );
+        assert_eq!(Ok(d(*expected)), result);
     }
 }
