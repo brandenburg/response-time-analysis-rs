@@ -1,5 +1,6 @@
 pub mod arrival;
 pub mod demand;
+pub mod edf;
 pub mod fifo;
 pub mod fixed_point;
 pub mod fixed_priority;
