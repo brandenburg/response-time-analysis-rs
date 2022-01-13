@@ -192,8 +192,15 @@ impl Service {
         self.val == 0
     }
 
+    /// The amount of service received in interval of duration `d`
+    /// (assuming a unit-service processor).
     pub const fn in_interval(d: Duration) -> Service {
         Service { val: d.val }
+    }
+
+    /// The least unit of service.
+    pub const fn epsilon() -> Service {
+        Service { val: 1 }
     }
 
     /// Subtract without under-flowing.
