@@ -14,6 +14,10 @@ pub enum SearchFailure {
     /// No fixed point found below the given divergence threshold.
     #[error("no fixed point less than {limit} found for offset {offset}")]
     DivergenceLimitExceeded { offset: Offset, limit: Duration },
+
+    /// Some analysis assumption is violated.
+    #[error("analysis assumption violated")]
+    AssumptionViolated,
 }
 
 pub type SearchResult = Result<Duration, SearchFailure>;
