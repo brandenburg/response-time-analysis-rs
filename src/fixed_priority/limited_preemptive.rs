@@ -1,9 +1,26 @@
 use crate::arrival::ArrivalBound;
 use crate::demand::{self, RequestBound};
-use crate::fixed_point;
-use crate::supply;
 use crate::time::{Duration, Offset, Service};
-use crate::wcet;
+use crate::{fixed_point, supply, wcet};
+
+/// The information about the task under analysis required to perform
+/// the analysis.
+/// Create one struct of this type to represent the task under analysis.
+pub struct TaskUnderAnalysis<'a, AB: ArrivalBound + ?Sized> {
+    /// The task's WCET.
+    pub wcet: wcet::Scalar,
+
+    /// The task's arrival bound.
+    pub arrivals: &'a AB,
+
+    /// The maximum length of the task's last segment.
+    pub last_np_segment: Service,
+
+    /// The `blocking_bound` must be a bound on the maximum priority
+    /// inversion caused by tasks of lower priority, which corresponds
+    /// to the maximum segment length of any lower-priority task.
+    pub blocking_bound: Service,
+}
 
 /// Try to find a response-time bound for a task under
 /// limited-preemptive fixed-priority scheduling on a dedicated
@@ -11,60 +28,51 @@ use crate::wcet;
 ///
 /// The analysis assumes that all tasks are independent and that each
 /// is characterized by an arbitrary arrival curve and a WCET bound.
-/// The total higher-or-equal-priority interference is represented by
-/// `interference`; the task under analysis is given by
-/// `task_under_analysis_wcet`, `task_under_analysis_arrivals` and
-/// `task_under_analysis_last_nonpreemptive_segment`, which
-/// represents the length of the last non-preemptive segment of the
-/// task; `blocking_bound` is a bound on the maximum priority
-/// inversion caused by tasks of lower priority.
+/// The set of higher-or-equal-priority tasks is represented by
+/// `interfering_tasks`; the task under analysis is given by
+/// `tua`.
 ///
 /// If no fixed point is found below the divergence limit given by
-/// `limit`, return a [SearchFailure][fixed_point::SearchFailure]
-/// instead.
+/// `limit`, the function returns a
+/// [SearchFailure][fixed_point::SearchFailure] instead.
 ///
 /// This analysis is an implementation of the corresponding  verified
 /// instantiation of [the abstract RTA of Bozhko and Brandenburg
 /// (ECRTS 2020)](https://drops.dagstuhl.de/opus/volltexte/2020/12385/pdf/LIPIcs-ECRTS-2020-22.pdf).
 /// See also [the Coq-verified instantiation](https://prosa.mpi-sws.org/branches/master/pretty/prosa.results.fixed_priority.rta.limited_preemptive.html).
 #[allow(non_snake_case)]
-pub fn dedicated_uniproc_rta<RBF, AB>(
-    interference: &RBF,
-    task_under_analysis_wcet: &wcet::Scalar,
-    task_under_analysis_arrivals: &AB,
-    task_under_analysis_last_nonpreemptive_segment: Service,
-    blocking_bound: Service,
+pub fn dedicated_uniproc_rta<InterferingRBF, AB>(
+    tua: &TaskUnderAnalysis<AB>,
+    interfering_tasks: &[InterferingRBF],
     limit: Duration,
 ) -> fixed_point::SearchResult
 where
-    RBF: RequestBound + ?Sized,
+    InterferingRBF: RequestBound,
     AB: ArrivalBound + ?Sized,
 {
     // This analysis is specific to dedicated uniprocessors.
     let proc = supply::Dedicated::new();
 
     // For convenience, define the RBF for the task under analysis.
-    let task_under_analysis =
-        demand::RBF::new(&task_under_analysis_arrivals, &task_under_analysis_wcet);
+    let tua_rbf = demand::RBF::new(tua.arrivals, tua.wcet);
 
     // First, bound the maximum possible busy-window length.
     let L = fixed_point::search(&proc, limit, |L| {
-        blocking_bound + interference.service_needed(L) + task_under_analysis.service_needed(L)
+        let interference_bound: Service = interfering_tasks
+            .iter()
+            .map(|rbf| rbf.service_needed(L))
+            .sum();
+
+        tua.blocking_bound + interference_bound + tua_rbf.service_needed(L)
     })?;
 
-    // Second, define the RTA for a given offset A. To this end, we
-    // define some trivial components of the fixed-point equation to
-    // implement the RTA given in the aRTA paper as literally as
-    // possible.
-
-    // The run-to-completion threshold of the task under analysis. In
-    // the limited preemptive case, no job can be preempted after it
-    // reaches its last non-preemptive segment.
+    // Second, the run-to-completion threshold of the task under
+    // analysis. In the limited preemptive case, no job can be preempted
+    // after it reaches its last non-preemptive segment.
     // See also: https://prosa.mpi-sws.org/branches/master/pretty/prosa.model.task.preemption.limited_preemptive.html#limited_preemptive
-    let rtct = task_under_analysis_wcet.wcet
-        - (task_under_analysis_last_nonpreemptive_segment - Service::epsilon());
+    let rtct = tua.wcet.wcet - (tua.last_np_segment - Service::epsilon());
     // The remaining cost after the run-to-completion threshold has been reached.
-    let rem_cost = task_under_analysis_wcet.wcet - rtct;
+    let rem_cost = tua.wcet.wcet - rtct;
 
     // Now define the offset-specific RTA.
     let rta = |A: Offset| {
@@ -72,14 +80,17 @@ where
         // where AF = A + F.
         let rhs = |AF: Duration| {
             // demand of the task under analysis
-            let self_interference = task_under_analysis.service_needed(A.closed_since_time_zero());
+            let self_interference = tua_rbf.service_needed(A.closed_since_time_zero());
             let tua_demand = self_interference - rem_cost;
 
             // demand of all interfering tasks
-            let interfering_demand = interference.service_needed(AF);
+            let interfering_demand = interfering_tasks
+                .iter()
+                .map(|rbf| rbf.service_needed(AF))
+                .sum();
 
-            // considering `blocking_bound` to account for priority inversion.
-            blocking_bound + tua_demand + interfering_demand
+            // considering `blocking_bound` to account for priority inversion
+            tua.blocking_bound + tua_demand + interfering_demand
         };
 
         // Find the solution A+F that is the least fixed point
@@ -94,7 +105,7 @@ where
     // The case of A=0 is not handled explicitly since `step_offsets()`
     // necessarily yields it.
     let max_offset = Offset::from_time_zero(L);
-    let search_space = demand::step_offsets(&task_under_analysis).take_while(|A| *A < max_offset);
+    let search_space = demand::step_offsets(&tua_rbf).take_while(|A| *A < max_offset);
 
     // Apply the offset-specific RTA to each offset in the search space and
     // return the maximum response-time bound.

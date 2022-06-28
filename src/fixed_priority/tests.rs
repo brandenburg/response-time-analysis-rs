@@ -1,8 +1,5 @@
 use crate::arrival::Sporadic;
-use crate::demand;
-use crate::fixed_priority;
-use crate::time::Service;
-use crate::wcet;
+use crate::{demand, fixed_priority, wcet};
 
 use crate::tests::{d, s};
 
@@ -29,13 +26,10 @@ fn fp_fp_rta_basic() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = &rbfs[i];
+        let result =
+            fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 }
@@ -67,25 +61,19 @@ fn fp_fp_rta_lehoczky90_ex2() {
 
     for (i, expected_bound) in expected1.iter().enumerate() {
         // lower-indexed task == higher-priority task
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = &rbfs[i];
+        let result =
+            fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 
     for (i, expected_bound) in expected2.iter().enumerate() {
         // higher-indexed task == higher-priority task
-        let interference = demand::Slice::of(&rbfs[i + 1..]);
-        let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            horizon,
-        );
+        let interference = &rbfs[i + 1..];
+        let tua = &rbfs[i];
+        let result =
+            fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 }
@@ -116,13 +104,10 @@ fn fp_fp_rta_lehoczky90_ex3() {
 
     for (i, expected_bound) in expected.iter().enumerate() {
         // lower-indexed task == higher-priority task
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = &rbfs[i];
+        let result =
+            fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 }
@@ -284,13 +269,10 @@ fn fp_fp_rta_schedcat() {
             .collect();
 
         for (i, expected_bound) in ts.iter().map(|(_, _, rt)| rt).enumerate() {
-            let interference = demand::Slice::of(&rbfs[0..i]);
-            let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-                &interference,
-                &costs[i],
-                &arrivals[i],
-                horizon,
-            );
+            let interference = &rbfs[0..i];
+            let tua = &rbfs[i];
+            let result =
+                fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
             assert_eq!(Ok(d(*expected_bound)), result);
         }
     }
@@ -319,13 +301,10 @@ fn fp_fp_rta_overload() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let result = fixed_priority::fully_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = &rbfs[i];
+        let result =
+            fixed_priority::fully_preemptive::dedicated_uniproc_rta(tua, interference, horizon);
         assert_eq!(expected_bound.map(d), result.ok());
     }
 }
@@ -354,20 +333,19 @@ fn fp_np_rta_1() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = rbfs[i + 1..]
-            .iter()
-            .map(|r| r.wcet.wcet)
-            .max_by_key(|wcet| *wcet)
-            .unwrap_or(s(0));
-
-        let result = fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            blocking_bound.saturating_sub(s(1)),
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::fully_nonpreemptive::TaskUnderAnalysis {
+            wcet: costs[i],
+            arrivals: &arrivals[i],
+            blocking_bound: rbfs[i + 1..]
+                .iter()
+                .map(|r| r.wcet.wcet)
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
+        let result =
+            fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(&tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 }
@@ -396,20 +374,19 @@ fn fp_np_rta_overload() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = rbfs[i + 1..]
-            .iter()
-            .map(|r| r.wcet.wcet)
-            .max_by_key(|wcet| *wcet)
-            .unwrap_or(s(0));
-
-        let result = fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            blocking_bound.saturating_sub(s(1)),
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::fully_nonpreemptive::TaskUnderAnalysis {
+            wcet: costs[i],
+            arrivals: &arrivals[i],
+            blocking_bound: rbfs[i + 1..]
+                .iter()
+                .map(|r| r.wcet.wcet)
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
+        let result =
+            fixed_priority::fully_nonpreemptive::dedicated_uniproc_rta(&tua, interference, horizon);
         assert_eq!(expected_bound.map(d), result.ok());
     }
 }
@@ -418,8 +395,8 @@ fn fp_np_rta_overload() {
 fn fp_lp_rta_1() {
     let horizon = d(100);
     let params = vec![(4, 12), (6, 20), (8, 40)];
-    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
-    let task_last_nonpr_segment: Vec<u64> = vec![2, 3, 3];
+    let max_nonpr_segment = vec![s(2), s(3), s(4)];
+    let task_last_nonpr_segment = vec![s(2), s(3), s(3)];
 
     let expected: Vec<u64> = vec![7, 13, 22];
 
@@ -439,23 +416,21 @@ fn fp_lp_rta_1() {
         .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
         .collect();
 
-    let task_last_segment: Vec<Service> = task_last_nonpr_segment
-        .iter()
-        .map(|m| Service::from(*m))
-        .collect();
-
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
-
-        let result = fixed_priority::limited_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            task_last_segment[i],
-            s(*blocking_bound).saturating_sub(s(1)),
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::limited_preemptive::TaskUnderAnalysis {
+            wcet: costs[i],
+            arrivals: &arrivals[i],
+            last_np_segment: task_last_nonpr_segment[i],
+            blocking_bound: max_nonpr_segment[i + 1..]
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
+        let result =
+            fixed_priority::limited_preemptive::dedicated_uniproc_rta(&tua, interference, horizon);
         assert_eq!(Ok(d(*expected_bound)), result);
     }
 }
@@ -464,8 +439,8 @@ fn fp_lp_rta_1() {
 fn fp_lp_rta_overload() {
     let horizon = d(100000);
     let params = vec![(4, 12), (6, 20), (8, 21)];
-    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
-    let task_last_nonpr_segment: Vec<u64> = vec![2, 3, 3];
+    let max_nonpr_segment = vec![s(2), s(3), s(4)];
+    let task_last_nonpr_segment = vec![s(2), s(3), s(3)];
 
     let expected = vec![Some(7), Some(13), None];
 
@@ -485,23 +460,21 @@ fn fp_lp_rta_overload() {
         .map(|(wcet, arr)| demand::RBF::new(arr, wcet))
         .collect();
 
-    let task_last_segment: Vec<Service> = task_last_nonpr_segment
-        .iter()
-        .map(|m| Service::from(*m))
-        .collect();
-
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
-
-        let result = fixed_priority::limited_preemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            task_last_segment[i],
-            s(*blocking_bound).saturating_sub(s(1)),
-            horizon,
-        );
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::limited_preemptive::TaskUnderAnalysis {
+            wcet: costs[i],
+            arrivals: &arrivals[i],
+            last_np_segment: task_last_nonpr_segment[i],
+            blocking_bound: max_nonpr_segment[i + 1..]
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
+        let result =
+            fixed_priority::limited_preemptive::dedicated_uniproc_rta(&tua, interference, horizon);
         assert_eq!(expected_bound.map(d), result.ok());
     }
 }
@@ -510,7 +483,7 @@ fn fp_lp_rta_overload() {
 fn fp_fnps_rta_1() {
     let horizon = d(100);
     let params = vec![(4, 12), (6, 20), (8, 40)];
-    let max_nonpr_segment: Vec<u64> = vec![2, 3, 4];
+    let max_nonpr_segment = vec![s(2), s(3), s(4)];
 
     let expected: Vec<u64> = vec![7, 17, 32];
 
@@ -531,14 +504,19 @@ fn fp_fnps_rta_1() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
-
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::floating_nonpreemptive::TaskUnderAnalysis {
+            rbf: &rbfs[i],
+            blocking_bound: max_nonpr_segment[i + 1..]
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
         let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            s(*blocking_bound).saturating_sub(s(1)),
+            &tua,
+            interference,
             horizon,
         );
         assert_eq!(Ok(d(*expected_bound)), result);
@@ -549,7 +527,7 @@ fn fp_fnps_rta_1() {
 fn fp_fnps_rta_overload() {
     let horizon = d(10000);
     let params = vec![(4, 12), (6, 20), (8, 30), (8, 40)];
-    let max_nonpr_segment: Vec<u64> = vec![2, 3, 3, 4];
+    let max_nonpr_segment = vec![s(2), s(3), s(3), s(4)];
 
     let expected = vec![Some(7), Some(17), Some(35), None];
 
@@ -570,14 +548,19 @@ fn fp_fnps_rta_overload() {
         .collect();
 
     for (i, expected_bound) in expected.iter().enumerate() {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-        let blocking_bound = max_nonpr_segment[i + 1..].iter().max().unwrap_or(&0);
-
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::floating_nonpreemptive::TaskUnderAnalysis {
+            rbf: &rbfs[i],
+            blocking_bound: max_nonpr_segment[i + 1..]
+                .iter()
+                .copied()
+                .max()
+                .unwrap_or(s(0))
+                .saturating_sub(s(1)),
+        };
         let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            s(*blocking_bound).saturating_sub(s(1)),
+            &tua,
+            interference,
             horizon,
         );
         assert_eq!(expected_bound.map(d), result.ok());
@@ -631,13 +614,14 @@ fn fp_fnps_rta_audsley() {
     for (i, (_cost, _period, _deadline, blocking_bound, _jitter, expected)) in
         example_tasks.iter().enumerate()
     {
-        let interference = demand::Slice::of(&rbfs[0..i]);
-
+        let interference = &rbfs[0..i];
+        let tua = fixed_priority::floating_nonpreemptive::TaskUnderAnalysis {
+            rbf: &rbfs[i],
+            blocking_bound: s(*blocking_bound),
+        };
         let result = fixed_priority::floating_nonpreemptive::dedicated_uniproc_rta(
-            &interference,
-            &costs[i],
-            &arrivals[i],
-            s(*blocking_bound),
+            &tua,
+            interference,
             horizon,
         );
         assert_eq!(Ok(d(*expected)), result);
