@@ -1,3 +1,5 @@
+//! RTA for FP scheduling with limited-preemptive jobs (**LP-FP**)
+
 use crate::arrival::ArrivalBound;
 use crate::demand::{self, RequestBound};
 use crate::time::{Duration, Offset, Service};

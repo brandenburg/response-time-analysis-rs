@@ -1,3 +1,5 @@
+//! RTA for FP scheduling with fully preemptive jobs (**FP**)
+
 use crate::demand::{self, RequestBound};
 use crate::time::{Duration, Offset, Service};
 use crate::{fixed_point, supply};

@@ -1,3 +1,8 @@
+/*! Models of resource supply (e.g., dedicated processors, reservations, etc.)
+
+This module provides the trait [SupplyBound], which models the notion of
+a *supply-bound function* (SBF), as well as common types of supply. */
+
 use auto_impl::auto_impl;
 
 use crate::time::{Duration, Service};

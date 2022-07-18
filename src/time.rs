@@ -1,3 +1,14 @@
+/*! A simple discrete time model with type-safe wrappers
+
+The analyses and definitions provided in this module are based on a
+simple discrete time model with a least, indivisible unit of time (e.g.,
+a processor cycle).
+
+To avoid accidental confusion of offsets, durations, and intervals, some
+type-safe wrappers are provided.
+
+ */
+
 use derive_more::{Add, AddAssign, Display, From, Into, Sub, Sum};
 
 /// This library uses a simple discrete time model.

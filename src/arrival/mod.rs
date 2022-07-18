@@ -1,3 +1,12 @@
+/*! Models of arrival processes (periodic, sporadic, etc.)
+
+This module provides a central trait, [ArrivalBound], which represents
+an upper-bounding arrival curve. Furthermore, it provides
+implementations of the trait for several types of arrival processes
+commonly studied in the literature on the analysis of real-time systems
+(e.g, [Periodic] and [Sporadic] tasks).
+*/
+
 use auto_impl::auto_impl;
 use itertools::Itertools;
 

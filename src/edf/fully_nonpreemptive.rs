@@ -1,3 +1,5 @@
+//! RTA for EDF scheduling with fully non-preemptive jobs (**NP-EDF**)
+
 use itertools::Itertools;
 
 use crate::arrival::ArrivalBound;

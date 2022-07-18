@@ -1,3 +1,12 @@
+/*! Models of resource needs such as a task's scalar *worst-case execution time* (WCET)
+
+This module provides the trait [JobCostModel], which models the notion
+of the cumulative worst-case resource needs of one or more jobs of a
+task.
+
+The implementation most commonly encountered in the literature is
+[Scalar], which represents a WCET value as assumed by Liu & Layland. */
+
 use auto_impl::auto_impl;
 
 use crate::time::Service;

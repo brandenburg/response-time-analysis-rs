@@ -1,3 +1,11 @@
+/*! The *request-bound function* (RBF) abstraction and related definitions
+
+This module provides a trait to express request-bound functions (RBFs),
+which are an abstraction to characterize the total demand for processor
+service by one or more tasks.
+
+*/
+
 use auto_impl::auto_impl;
 
 use crate::time::{Duration, Offset, Service};

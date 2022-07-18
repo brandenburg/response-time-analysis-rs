@@ -1,3 +1,4 @@
+//! RTA for FP scheduling with fully non-preemptive jobs (**NP-FP**)
 use crate::arrival::ArrivalBound;
 use crate::demand::{self, RequestBound};
 use crate::time::{Duration, Offset, Service};

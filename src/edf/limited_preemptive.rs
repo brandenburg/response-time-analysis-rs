@@ -1,3 +1,5 @@
+//! RTA for EDF scheduling with limited-preemptive jobs (**LP-EDF**)
+
 use itertools::Itertools;
 
 use crate::arrival::ArrivalBound;

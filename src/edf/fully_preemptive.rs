@@ -1,3 +1,5 @@
+//! RTA for EDF scheduling with fully preemptive jobs (**EDF**)
+
 use itertools::Itertools;
 
 use crate::demand::{self, RequestBound};

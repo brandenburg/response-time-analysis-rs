@@ -1,3 +1,10 @@
+/*! Helper functions for fixed-point searches
+
+This module implements the standard iterative strategy for solving
+fixed-point equations of **monotonically increasing** functions.
+
+ */
+
 use std::cmp::Ordering;
 
 use thiserror::Error;
@@ -20,6 +27,8 @@ pub enum SearchFailure {
     AssumptionViolated,
 }
 
+/// A fixed-point search either returns the fixed point (of type [Duration]) or
+/// a [SearchFailure] explaining why the search failed.
 pub type SearchResult = Result<Duration, SearchFailure>;
 
 /// Conduct an iterative fixed point search up to a given divergence

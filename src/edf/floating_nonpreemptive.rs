@@ -1,3 +1,5 @@
+//! RTA for EDF scheduling with floating non-preemptive sections (**EDF-NPS**)
+
 use itertools::Itertools;
 
 use crate::demand::{self, RequestBound};
