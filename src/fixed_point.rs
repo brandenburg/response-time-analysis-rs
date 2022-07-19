@@ -108,12 +108,19 @@ where
     RHS: Fn(Duration) -> Service,
 {
     let bw = search_with_offset(supply, Offset::from(0), divergence_limit, &workload_bound);
-    // In debug mode, compare against the brute-force solution.
+    // In debug mode, compare against the brute-force solution, if the limit is not too large.
     #[cfg(debug_assertions)]
-    debug_assert_eq!(
-        brute_force_search_with_offset(supply, Offset::from(0), divergence_limit, &workload_bound),
-        bw
-    );
+    if divergence_limit <= Duration::from(100_000) {
+        debug_assert_eq!(
+            brute_force_search_with_offset(
+                supply,
+                Offset::from(0),
+                divergence_limit,
+                &workload_bound
+            ),
+            bw
+        );
+    }
     bw
 }
 
