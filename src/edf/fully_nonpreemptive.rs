@@ -107,7 +107,10 @@ where
         // Bound on the priority inversion caused by jobs with lower priority.
         let blocking_bound = other_tasks
             .iter()
-            .filter(|ot| ot.deadline > tua.deadline + A.since_time_zero())
+            .filter(|ot| {
+                ot.deadline > tua.deadline + A.since_time_zero()
+                    && ot.rbf().service_needed(Duration::epsilon()) > Service::none()
+            })
             .map(|ot| ot.wcet.wcet.saturating_sub(Service::epsilon()))
             .max()
             .unwrap_or_else(Service::none);
