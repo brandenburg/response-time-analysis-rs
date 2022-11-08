@@ -64,6 +64,7 @@ mod propagated;
 mod slice;
 mod sporadic;
 
+pub use aggregated::sum_of;
 pub use arrival_curve_prefix::ArrivalCurvePrefix;
 pub use curve::{Curve, ExtrapolatingCurve};
 pub use dmin::{delta_min_iter, nonzero_delta_min_iter};
