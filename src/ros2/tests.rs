@@ -3,11 +3,11 @@ use std::iter::FromIterator;
 use crate::arrival::ArrivalBound;
 use crate::demand::RequestBound;
 use crate::supply::SupplyBound;
-use crate::time::Duration;
+use crate::time::{Duration, Offset};
 use crate::wcet::JobCostModel;
 use crate::{arrival, demand, ros2, supply, wcet};
 
-use crate::tests::{d, s};
+use crate::tests::{d, o, s};
 
 #[test]
 fn ros2_event_source() {
@@ -570,4 +570,91 @@ fn ros2_overloaded_executor2_rr() {
     let chain = [&callbacks[1]];
     let bound = ros2::rr::rta_subchain(&sbf, workload, &chain[..], d(10000));
     assert!(bound.is_err());
+}
+
+#[test]
+fn ros2_post_chain_arrival_self_interference_bw() {
+    let sbf = supply::Dedicated::new();
+    let unit_wcet = wcet::Scalar::from(s(1));
+
+    let ab1: Box<dyn ArrivalBound> = Box::new(arrival::Periodic::new(d(1000)));
+    let arrivals: Vec<Offset> = vec![o(0), o(5), o(1000)];
+    let ab2: Box<dyn ArrivalBound> =
+        Box::new(arrival::Curve::from_trace(arrivals.iter().copied(), 4));
+    assert_eq!(ab1.number_arrivals(d(16)), 1);
+    assert_eq!(ab2.number_arrivals(d(16)), 2);
+
+    let ab3: Box<dyn ArrivalBound> = Box::new(arrival::sum_of(&ab1, &ab2));
+
+    let callbacks = vec![
+        ros2::bw::Callback::new(
+            d(16),
+            &ab1,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab1,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab1,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab1,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab1,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab3,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab3,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab3,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+        ros2::bw::Callback::new(
+            d(16),
+            &ab2,
+            &unit_wcet,
+            ros2::rr::CallbackType::PolledUnknownPrio,
+        ),
+    ];
+
+    let workload = &callbacks[..];
+    let chain = [
+        &callbacks[0],
+        &callbacks[1],
+        &callbacks[2],
+        &callbacks[3],
+        &callbacks[4],
+        &callbacks[5],
+        &callbacks[6],
+        &callbacks[7],
+    ];
+    let bound = ros2::bw::rta_subchain(&sbf, workload, &chain[..], d(100000));
+    assert!(bound.is_ok());
+    assert_eq!(bound, Ok(d(16)));
 }

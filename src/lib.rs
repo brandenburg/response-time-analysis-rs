@@ -37,11 +37,16 @@ pub mod wcet;
 
 #[cfg(test)]
 mod tests {
-    use crate::time::{Duration, Service};
+    use crate::time::{Duration, Offset, Service};
 
     // helper function for typed duration values
     pub fn d(val: u64) -> Duration {
         Duration::from(val)
+    }
+
+    // helper function for typed offset values
+    pub fn o(val: u64) -> Offset {
+        Offset::from(val)
     }
 
     // helper function for vectors of typed duration values

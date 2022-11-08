@@ -159,6 +159,9 @@ where
     // callback at the end of the chain under analysis
     let eoc = subchain.last().expect("subchain must not be empty");
 
+    // do we have a proper chain, or just a single callback?
+    let singleton_chain = subchain.len() == 1;
+
     // check that we are actually given a proper subchain, i.e., all references
     // in the subchain must point to something in the workload
     debug_assert!(
@@ -204,13 +207,19 @@ where
         let F_star = supply.service_time(rhs_F_star);
 
         // the response-time bound
-        Ok(F_star.saturating_sub(activation.since_time_zero()))
+        if singleton_chain {
+            // special case: A = t_a, so we can subtract in Theorem 3
+            Ok(F_star.saturating_sub(activation.since_time_zero()))
+        } else {
+            // we don't know A, so safely approximate it as A=0
+            Ok(F_star)
+        }
     };
 
     // Bound the maximum offset (Lemma 18).
-    let rhs_max = |A_star: Duration| {
-        let si = eoc.own_workload_rbf(Offset::from_time_zero(A_star));
-        let di = bw_interference(A_star, Offset::from_time_zero(A_star));
+    let rhs_max = |ta_star: Duration| {
+        let si = eoc.own_workload_rbf(Offset::from_time_zero(ta_star));
+        let di = bw_interference(ta_star, Offset::from_time_zero(ta_star));
         EPSILON_SERVICE + di + si
     };
     let max_offset = Offset::from_time_zero(fixed_point::search(supply, limit, rhs_max)?);
@@ -228,8 +237,8 @@ where
                     // This is the callback under analysis.
                     // The steps_iter() gives us the values of delta such that
                     // number_arrivals(delta-1) < number_arrivals_delta().
-                    // However, we are looking for A such that
-                    // number_arrivals(A) < number_arrivals(A + 1).
+                    // However, we are looking for t_a such that
+                    // number_arrivals(t_a) < number_arrivals(t_a + 1).
                     // Thus, we need to subtract one from delta.
                     Offset::from_time_zero(delta.saturating_sub(EPSILON))
                 } else {
@@ -249,16 +258,16 @@ where
     // with a brute-force solution.
     #[cfg(debug_assertions)]
     let mut brute_force_steps = (0..)
-        .filter(|A| {
+        .filter(|t_a| {
             workload.iter().any(|cb|
                 // Negated conditions of Lemma 19.
                 if std::ptr::eq(*eoc, cb) {
-                    cb.arrival_bound.number_arrivals(Duration::from(*A)) !=
-                    cb.arrival_bound.number_arrivals(Duration::from(*A + 1))
+                    cb.arrival_bound.number_arrivals(Duration::from(*t_a)) !=
+                    cb.arrival_bound.number_arrivals(Duration::from(*t_a + 1))
                 } else {
-                    cb.kind.is_pp() && *A > 0 &&
-                    cb.arrival_bound.number_arrivals(Duration::from(*A - 1)) !=
-                    cb.arrival_bound.number_arrivals(Duration::from(*A))
+                    cb.kind.is_pp() && *t_a > 0 &&
+                    cb.arrival_bound.number_arrivals(Duration::from(*t_a - 1)) !=
+                    cb.arrival_bound.number_arrivals(Duration::from(*t_a))
                 }
             )
         })
@@ -278,7 +287,7 @@ where
         })
     };
 
-    // The search space is given by A=0 and each relevant step below max_offset.
+    // The search space is given by t_a=0 and each relevant step below max_offset.
     let search_space = all_steps.take_while(|activation| *activation < max_offset);
 
     // Apply the offset-specific RTA to each offset in the search space and
