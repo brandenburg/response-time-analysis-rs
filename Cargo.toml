@@ -1,6 +1,6 @@
 [package]
 name = "response-time-analysis"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Björn Brandenburg <bbb@mpi-sws.org>"]
 edition = "2021"
 license = "MIT"
